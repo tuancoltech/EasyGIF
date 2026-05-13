@@ -1,8 +1,12 @@
 package com.nht.gif
 
+import android.Manifest
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.graphics.ImageDecoder
+import android.os.Build
 import android.graphics.drawable.AnimatedImageDrawable
 import android.media.AudioManager
 import android.media.MediaPlayer
@@ -10,6 +14,7 @@ import android.net.Uri
 import android.os.Bundle
 import android.view.View.GONE
 import android.view.View.VISIBLE
+import androidx.activity.result.contract.ActivityResultContracts
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.engine.DiskCacheStrategy
 import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions
@@ -23,6 +28,7 @@ import com.nht.gif.toolbox.FileTools.deleteFile
 import com.nht.gif.toolbox.FileTools.fileSize
 import com.nht.gif.toolbox.FileTools.formattedFileSize
 import com.nht.gif.toolbox.FileTools.mimeType
+import com.nht.gif.toolbox.NotificationHelper
 import com.nht.gif.toolbox.Toolbox.getExtra
 import com.nht.gif.toolbox.Toolbox.onClick
 import com.nht.gif.toolbox.Toolbox.toast
@@ -35,6 +41,17 @@ import java.util.Locale
 class FileSavedActivity : BaseActivity() {
   private val binding by lazy { ActivityFileSavedBinding.inflate(layoutInflater) }
   private val fileUri by lazy { intent.getExtra<Uri>(EXTRA_SAVED_FILE_URI) }
+
+  private val notificationPermissionLauncher = registerForActivityResult(
+    ActivityResultContracts.RequestPermission()
+  ) { isGranted ->
+    if (isGranted) {
+      NotificationHelper.showShareNotification(
+        this, fileUri, fileUri.mimeType() ?: "", FileTools.FileName(fileUri).name,
+        permissionGranted = true,
+      )
+    }
+  }
 
   override fun onCreateIfEulaAccepted(savedInstanceState: Bundle?) {
     setContentView(binding.root)
@@ -101,6 +118,18 @@ class FileSavedActivity : BaseActivity() {
         )
       )
     }
+    binding.mbCopy.onClick { copyToClipboard(fileUri) }
+    NotificationHelper.showShareNotification(
+      this, fileUri, fileUri.mimeType() ?: "", FileTools.FileName(fileUri).name,
+      onPermissionRequired = { notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS) },
+    )
+  }
+
+  private fun copyToClipboard(uri: Uri) {
+    val clip = ClipData.newUri(contentResolver, getString(R.string.copy_to_clipboard), uri)
+    (getSystemService(CLIPBOARD_SERVICE) as ClipboardManager).setPrimaryClip(clip)
+    // On API 33+ the system shows its own clipboard confirmation UI; avoid duplicate feedback.
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) toast(R.string.copied_to_clipboard)
   }
 
   override fun onPause() {
@@ -114,10 +143,9 @@ class FileSavedActivity : BaseActivity() {
   }
 
   companion object {
-    fun start(context: Context, fileUri: Uri) {
-      context.startActivity(
-        Intent(context, FileSavedActivity::class.java).putExtra(EXTRA_SAVED_FILE_URI, fileUri)
-      )
-    }
+    fun createIntent(context: Context, fileUri: Uri): Intent =
+      Intent(context, FileSavedActivity::class.java).putExtra(EXTRA_SAVED_FILE_URI, fileUri)
+
+    fun start(context: Context, fileUri: Uri) = context.startActivity(createIntent(context, fileUri))
   }
 }
