@@ -98,6 +98,11 @@
   <string name="remove_background">Remove background</string>
   <string name="reverse">Reverse</string>
   <string name="final_pause">Final pause</string>
+  <string name="color_filter">Color filter</string>
+  <string name="filter_none">None</string>
+  <string name="filter_vintage">Vintage</string>
+  <string name="filter_neon">Neon</string>
+  <string name="filter_noir">Noir</string>
   <string name="color_key">Color key</string>
   <string name="selected_color">Selected color</string>
   <string name="preview__">Preview</string>

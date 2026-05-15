@@ -8,6 +8,7 @@ import com.nht.gif.data.EstimationSettings
 import com.nht.gif.data.FileSizeEstimator
 import com.nht.gif.data.FileSizeEstimatorImpl
 import com.nht.gif.model.EstimationState
+import com.nht.gif.model.ExportColorFilter
 import com.nht.gif.model.OutputFormat
 import com.nht.gif.model.WebpQuality
 import kotlinx.coroutines.CancellationException
@@ -50,6 +51,9 @@ class VideoToGifExportOptionsViewModel(
   private val _lossy: MutableStateFlow<Int?> = MutableStateFlow(30)
   val lossy: StateFlow<Int?> = _lossy.asStateFlow()
 
+  private val _colorFilter = MutableStateFlow(ExportColorFilter.NONE)
+  val colorFilter: StateFlow<ExportColorFilter> = _colorFilter.asStateFlow()
+
   private val _estimationState = MutableStateFlow<EstimationState>(EstimationState.Loading)
   val estimationState: StateFlow<EstimationState> = _estimationState.asStateFlow()
 
@@ -81,6 +85,8 @@ class VideoToGifExportOptionsViewModel(
   fun setColorQuality(colorQuality: Int) { _colorQuality.value = colorQuality }
 
   fun setLossy(lossy: Int?) { _lossy.value = lossy }
+
+  fun setColorFilter(filter: ExportColorFilter) { _colorFilter.value = filter }
 
   private fun scheduleEstimation() {
     estimationJob?.cancel()

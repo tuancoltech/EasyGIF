@@ -96,6 +96,11 @@
   <string name="remove_background">抠图</string>
   <string name="reverse">倒放</string>
   <string name="final_pause">结尾停顿</string>
+  <string name="color_filter">滤镜</string>
+  <string name="filter_none">原图</string>
+  <string name="filter_vintage">复古</string>
+  <string name="filter_neon">霓虹</string>
+  <string name="filter_noir">黑白</string>
   <string name="color_key">抠去颜色</string>
   <string name="selected_color">Selected color</string>
   <string name="preview__">预览效果</string>
