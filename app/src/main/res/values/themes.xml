@@ -8,6 +8,11 @@
   <!-- Unselected format size label: LabelMedium, no bold -->
   <style name="TextAppearance.App.EstSize.Inactive" parent="TextAppearance.Material3.LabelMedium" />
 
+  <style name="ShapeAppearanceOverlay.EasyGif.ColorFilterCard" parent="">
+    <item name="cornerFamily">rounded</item>
+    <item name="cornerSize">8dp</item>
+  </style>
+
   <style name="Theme.EasyGif" parent="Theme.Material3.Dark.NoActionBar">
     <item name="android:colorBackground">@color/light</item>
     <item name="android:windowLightStatusBar">false</item>

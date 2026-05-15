@@ -24,9 +24,11 @@ import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.launch
 import com.arthenica.ffmpegkit.FFmpegKit
 import com.nht.gif.model.EstimationState
+import com.nht.gif.model.ExportColorFilter
 import com.nht.gif.model.OutputFormat
 import com.nht.gif.model.WebpQuality
 import com.nht.gif.model.formatEstimatedSize
+import com.nht.gif.ui.videotogif.ColorFilterAdapter
 import com.nht.gif.ui.videotogif.VideoToGifExportOptionsViewModel
 import com.nht.gif.MyConstants.FFMPEG_COMMAND_PREFIX_FOR_ALL_AN
 import com.nht.gif.MyConstants.VIDEO_TO_GIF_PREVIEW_CACHE_DIR
@@ -62,6 +64,8 @@ class VideoToGifExportOptionsDialogFragment : DialogFragment() {
       )
     )[VideoToGifExportOptionsViewModel::class.java]
   }
+
+  private lateinit var colorFilterAdapter: ColorFilterAdapter
 
   /** Determining whether a Key exists in a Map/Set is fast, while determining whether a file exists is much slower */
   private val fileExistsCache = mutableSetOf<String>()
@@ -194,6 +198,24 @@ class VideoToGifExportOptionsDialogFragment : DialogFragment() {
     }
     binding.chipFramerate.setOnCheckedChangeListener { _, isChecked ->
       binding.llcGroupFramerate.visibleIf { isChecked }
+    }
+    binding.chipColorFilter.setOnCheckedChangeListener { _, isChecked ->
+      binding.llcGroupColorFilter.visibleIf { isChecked }
+    }
+    colorFilterAdapter = ColorFilterAdapter { filter -> viewModel.setColorFilter(filter) }
+    binding.rvColorFilterOptions.adapter = colorFilterAdapter
+    viewLifecycleOwner.lifecycleScope.launch {
+      viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+        viewModel.colorFilter.collect { filter ->
+          colorFilterAdapter.setSelectedFilter(filter)
+          binding.chipColorFilter.text = when (filter) {
+            ExportColorFilter.NONE -> getString(R.string.color_filter)
+            ExportColorFilter.VINTAGE -> getString(R.string.filter_vintage)
+            ExportColorFilter.NEON -> getString(R.string.filter_neon)
+            ExportColorFilter.NOIR -> getString(R.string.filter_noir)
+          }
+        }
+      }
     }
     binding.viewColorKeyIndicator.onClick { toast(R.string.click_on_the_preview_image_to_pick_an_color) }
     binding.sliderColorKeySimilarity.apply {

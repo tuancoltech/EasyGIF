@@ -1,6 +1,7 @@
 package com.nht.gif
 
 import com.nht.gif.MyConstants.ADD_TEXT_RENDER_PNG_PATH
+import com.nht.gif.model.ExportColorFilter
 import com.nht.gif.model.OutputFormat
 import com.nht.gif.model.WebpQuality
 import com.nht.gif.MyConstants.FFMPEG_COMMAND_PREFIX_FOR_ALL_AN
@@ -34,6 +35,7 @@ data class TaskBuilderVideoToGif(
   val outputFormat: OutputFormat = OutputFormat.GIF,
   /** null when outputFormat == GIF; MEDIUM by default when outputFormat == ANIMATED_WEBP */
   val webpQuality: WebpQuality? = null,
+  val colorFilter: ExportColorFilter = ExportColorFilter.NONE,
 ) : Serializable {
 
   init {

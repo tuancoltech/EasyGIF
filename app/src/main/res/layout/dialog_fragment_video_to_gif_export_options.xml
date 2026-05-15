@@ -467,6 +467,11 @@
                 android:id="@+id/chipEnableFinalDelay"
                 style="@style/Theme.EasyGif.Chip"
                 android:text="@string/final_pause" />
+
+              <com.google.android.material.chip.Chip
+                android:id="@+id/chipColorFilter"
+                style="@style/Theme.EasyGif.Chip"
+                android:text="@string/color_filter" />
             </com.google.android.material.chip.ChipGroup>
           </HorizontalScrollView>
 
@@ -687,6 +692,56 @@
 
         <include layout="@layout/view_divider_horizontal" />
       </androidx.appcompat.widget.LinearLayoutCompat>
+
+      <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/llcGroupColorFilter"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:visibility="gone"
+        tools:visibility="visible">
+
+        <com.google.android.material.textview.MaterialTextView
+          android:id="@+id/mtvColorFilterLabel"
+          android:layout_width="0dp"
+          android:layout_height="wrap_content"
+          android:layout_marginStart="24dp"
+          android:text="@string/color_filter"
+          android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
+          app:layout_constraintBottom_toTopOf="@id/vDividerColorFilter"
+          app:layout_constraintEnd_toStartOf="@id/rvColorFilterOptions"
+          app:layout_constraintHorizontal_chainStyle="spread"
+          app:layout_constraintHorizontal_weight="2"
+          app:layout_constraintStart_toStartOf="parent"
+          app:layout_constraintTop_toTopOf="parent"
+          app:layout_constraintVertical_bias="0.5" />
+
+        <androidx.recyclerview.widget.RecyclerView
+          android:id="@+id/rvColorFilterOptions"
+          android:layout_width="0dp"
+          android:layout_height="wrap_content"
+          android:layout_marginEnd="24dp"
+          android:clipToPadding="false"
+          android:orientation="horizontal"
+          android:paddingVertical="8dp"
+          app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+          app:layout_constraintBottom_toTopOf="@id/vDividerColorFilter"
+          app:layout_constraintEnd_toEndOf="parent"
+          app:layout_constraintHorizontal_weight="5"
+          app:layout_constraintStart_toEndOf="@id/mtvColorFilterLabel"
+          app:layout_constraintTop_toTopOf="parent"
+          app:layout_constraintVertical_bias="0.5" />
+
+        <View
+          android:id="@+id/vDividerColorFilter"
+          android:layout_width="0dp"
+          android:layout_height="@dimen/divider_thickness"
+          android:background="@color/divider"
+          app:layout_constraintBottom_toBottomOf="parent"
+          app:layout_constraintEnd_toEndOf="parent"
+          app:layout_constraintStart_toStartOf="parent"
+          app:layout_constraintTop_toBottomOf="@id/rvColorFilterOptions" />
+
+      </androidx.constraintlayout.widget.ConstraintLayout>
       <!--以上菜单按需显示-->
 
 
