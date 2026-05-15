@@ -8,6 +8,12 @@ file("${rootProject.projectDir}/local.properties").withInputStream { localProps.
 
 android {
   signingConfigs {
+    debug {
+      storeFile file("${System.getProperty('user.home')}/.android/debug.keystore")
+      storePassword 'android'
+      keyAlias 'androiddebugkey'
+      keyPassword 'android'
+    }
     release {
       storeFile file(localProps['signing.keystore'])
       storePassword localProps['signing.keystore.password']
@@ -40,6 +46,8 @@ android {
       debuggable false
     }
     debug {
+      signingConfig signingConfigs.debug
+      applicationIdSuffix '.debug'
       minifyEnabled false
       shrinkResources false
       debuggable true

@@ -11,6 +11,7 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
+import androidx.annotation.RequiresPermission
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -112,13 +113,14 @@ object NotificationHelper {
     }
   }
 
+  @RequiresPermission(Manifest.permission.POST_NOTIFICATIONS)
   private fun postNotification(context: Context, uri: Uri, mimeType: String, fileName: String) {
     val notificationId = nextNotificationId.getAndIncrement()
 
     val openPendingIntent = PendingIntent.getActivity(
       context,
       notificationId,
-      FileSavedActivity.createIntent(context, uri),
+      FileSavedActivity.createIntentFromNotification(context, uri),
       PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
     )
 
@@ -127,7 +129,7 @@ object NotificationHelper {
       notificationId + 1,
       Intent.createChooser(buildShareIntent(uri, mimeType), null)
         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
-      PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_ONE_SHOT
+      PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
     )
 
     val notification = NotificationCompat.Builder(context, MyConstants.NOTIFICATION_CHANNEL_FILE_SAVED)
@@ -135,7 +137,7 @@ object NotificationHelper {
       .setContentTitle(context.getString(R.string.notification_file_saved_title, fileName))
       .setContentText(context.getString(R.string.notification_file_saved_body))
       .setContentIntent(openPendingIntent)
-      .addAction(0, context.getString(R.string.share), sharePendingIntent)
+      .addAction(R.drawable.ic_baseline_share_24, context.getString(R.string.share), sharePendingIntent)
       .setAutoCancel(true)
       .build()
 
