@@ -119,10 +119,12 @@ class FileSavedActivity : BaseActivity() {
       )
     }
     binding.mbCopy.onClick { copyToClipboard(fileUri) }
-    NotificationHelper.showShareNotification(
-      this, fileUri, fileUri.mimeType() ?: "", FileTools.FileName(fileUri).name,
-      onPermissionRequired = { notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS) },
-    )
+    if (!intent.getBooleanExtra(EXTRA_FROM_NOTIFICATION, false)) {
+      NotificationHelper.showShareNotification(
+        this, fileUri, fileUri.mimeType() ?: "", FileTools.FileName(fileUri).name,
+        onPermissionRequired = { notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS) },
+      )
+    }
   }
 
   private fun copyToClipboard(uri: Uri) {
@@ -143,8 +145,13 @@ class FileSavedActivity : BaseActivity() {
   }
 
   companion object {
+    private const val EXTRA_FROM_NOTIFICATION = "extra_from_notification"
+
     fun createIntent(context: Context, fileUri: Uri): Intent =
       Intent(context, FileSavedActivity::class.java).putExtra(EXTRA_SAVED_FILE_URI, fileUri)
+
+    fun createIntentFromNotification(context: Context, fileUri: Uri): Intent =
+      createIntent(context, fileUri).putExtra(EXTRA_FROM_NOTIFICATION, true)
 
     fun start(context: Context, fileUri: Uri) = context.startActivity(createIntent(context, fileUri))
   }
