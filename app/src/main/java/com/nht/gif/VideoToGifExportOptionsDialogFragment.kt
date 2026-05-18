@@ -201,6 +201,7 @@ class VideoToGifExportOptionsDialogFragment : DialogFragment() {
     }
     binding.chipColorFilter.setOnCheckedChangeListener { _, isChecked ->
       binding.llcGroupColorFilter.visibleIf { isChecked }
+      if (isChecked) viewModel.loadThumbnails()
     }
     colorFilterAdapter = ColorFilterAdapter { filter -> viewModel.setColorFilter(filter) }
     binding.rvColorFilterOptions.adapter = colorFilterAdapter
@@ -214,6 +215,14 @@ class VideoToGifExportOptionsDialogFragment : DialogFragment() {
             ExportColorFilter.NEON -> getString(R.string.filter_neon)
             ExportColorFilter.NOIR -> getString(R.string.filter_noir)
           }
+          updatePreviewImage()
+        }
+      }
+    }
+    viewLifecycleOwner.lifecycleScope.launch {
+      viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+        viewModel.filterThumbnails.collect { thumbnails ->
+          colorFilterAdapter.updateThumbnails(thumbnails)
         }
       }
     }
@@ -343,38 +352,53 @@ class VideoToGifExportOptionsDialogFragment : DialogFragment() {
       },
       outputFormat = viewModel.outputFormat.value,
       webpQuality = if (viewModel.outputFormat.value == OutputFormat.ANIMATED_WEBP) viewModel.webpQuality.value else null,
+      colorFilter = viewModel.colorFilter.value,
     )
   }
 
-  private fun renderPreviewImage(taskBuilder: TaskBuilderVideoToGifForPreview) = with(taskBuilder) {
-    if (!fileExistsCache.contains(getCache_shortLength_colorKey_paletteuse())) {
-      if (!fileExistsCache.contains(getCache_shortLength_colorKey_palettegen())) {
-        if (!fileExistsCache.contains(getCache_shortLength_colorKey())) {
-          if (!fileExistsCache.contains(getCache_shortLength())) {
-            Bitmap.createScaledBitmap(frame, gifOutputWH(shortLength).first, gifOutputWH(shortLength).second, true).saveToPng(getCache_shortLength())
-            fileExistsCache.add(getCache_shortLength())
-          }
-          colorKey?.let {
-            val command =
-              "$FFMPEG_COMMAND_PREFIX_FOR_ALL_AN -i \"${getCache_shortLength()}\" -vf colorkey=#${it.first}:${it.second / 100f}:0 -y \"${getCache_shortLength_colorKey()}\""
-            logRed("colorKey cmd", command)
-            FFmpegKit.execute(command)
-          }
-          fileExistsCache.add(getCache_shortLength_colorKey())
-        }
-        FFmpegKit.execute("$FFMPEG_COMMAND_PREFIX_FOR_ALL_AN -i \"${getCache_shortLength_colorKey()}\" -filter_complex palettegen=max_colors=$colorQuality:stats_mode=diff -y \"${getCache_shortLength_colorKey_palettegen()}\"")
-        fileExistsCache.add(getCache_shortLength_colorKey_palettegen())
-      }
-      FFmpegKit.execute("$FFMPEG_COMMAND_PREFIX_FOR_ALL_AN -i \"${getCache_shortLength_colorKey()}\" -i ${getCache_shortLength_colorKey_palettegen()} -filter_complex \"[0:v][1:v] paletteuse=dither=bayer\" -y \"${getCache_shortLength_colorKey_paletteuse()}\"")
-      fileExistsCache.add(getCache_shortLength_colorKey_paletteuse())
-      previewBitmapMap[this.copy(lossy = null)] = BitmapFactory.decodeFile(getCache_shortLength_colorKey_paletteuse())
+  private fun ensureCached(key: String, produce: () -> Unit) {
+    if (key !in fileExistsCache) { produce(); fileExistsCache += key }
+  }
+
+  private fun renderPreviewImage(taskBuilder: TaskBuilderVideoToGifForPreview): Bitmap = with(taskBuilder) {
+    ensureCached(getCache_shortLength()) {
+      Bitmap.createScaledBitmap(frame, gifOutputWH(shortLength).first, gifOutputWH(shortLength).second, true)
+        .saveToPng(getCache_shortLength())
     }
-    if (!previewBitmapMap.containsKey(this)) {
-      gifsicleLossy(
-        lossy!!, getCache_shortLength_colorKey_paletteuse(), getCache_shortLength_colorKey_paletteuse_lossy(), false
+    ensureCached(getCache_shortLength_colorKey()) {
+      colorKey?.let { ck ->
+        val cmd = "$FFMPEG_COMMAND_PREFIX_FOR_ALL_AN -i \"${getCache_shortLength()}\" " +
+          "-vf colorkey=#${ck.first}:${ck.second / 100f}:0 -y \"${getCache_shortLength_colorKey()}\""
+        logRed("colorKey cmd", cmd)
+        FFmpegKit.execute(cmd)
+      }
+    }
+    ensureCached(getCache_shortLength_colorKey_filter()) {
+      colorFilter.vfChain?.let { vfChain ->
+        FFmpegKit.execute(
+          "$FFMPEG_COMMAND_PREFIX_FOR_ALL_AN -i \"${getCache_shortLength_colorKey()}\" " +
+            "-vf \"$vfChain\" -y \"${getCache_shortLength_colorKey_filter()}\""
+        )
+      }
+    }
+    ensureCached(getCache_filter_palettegen()) {
+      FFmpegKit.execute(
+        "$FFMPEG_COMMAND_PREFIX_FOR_ALL_AN -i \"${getCache_shortLength_colorKey_filter()}\" " +
+          "-filter_complex palettegen=max_colors=$colorQuality:stats_mode=diff -y \"${getCache_filter_palettegen()}\""
       )
-      fileExistsCache.add(getCache_shortLength_colorKey_paletteuse_lossy())
-      previewBitmapMap[this] = BitmapFactory.decodeFile(getCache_shortLength_colorKey_paletteuse_lossy())
+    }
+    ensureCached(getCache_filter_paletteuse()) {
+      FFmpegKit.execute(
+        "$FFMPEG_COMMAND_PREFIX_FOR_ALL_AN -i \"${getCache_shortLength_colorKey_filter()}\" " +
+          "-i ${getCache_filter_palettegen()} -filter_complex \"[0:v][1:v] paletteuse=dither=bayer\" " +
+          "-y \"${getCache_filter_paletteuse()}\""
+      )
+    }
+    previewBitmapMap.getOrPut(this.copy(lossy = null)) { BitmapFactory.decodeFile(getCache_filter_paletteuse()) }
+    if (!previewBitmapMap.containsKey(this)) {
+      gifsicleLossy(lossy!!, getCache_filter_paletteuse(), getCache_filter_paletteuse_lossy(), false)
+      fileExistsCache += getCache_filter_paletteuse_lossy()
+      previewBitmapMap[this] = BitmapFactory.decodeFile(getCache_filter_paletteuse_lossy())
     }
     previewBitmapMap[this]!!
   }

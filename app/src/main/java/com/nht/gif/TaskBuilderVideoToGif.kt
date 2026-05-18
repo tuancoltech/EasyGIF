@@ -42,7 +42,7 @@ data class TaskBuilderVideoToGif(
     TextRender.render(textRender, videoWH.first, videoWH.second).saveToPng(ADD_TEXT_RENDER_PNG_PATH)
   }
 
-  fun getForPreviewOnly() = TaskBuilderVideoToGifForPreview(shortLength, colorQuality, lossy, videoWH, colorKey)
+  fun getForPreviewOnly() = TaskBuilderVideoToGifForPreview(shortLength, colorQuality, lossy, videoWH, colorKey, colorFilter)
 
   fun getOutputFramesEstimated() = ceil((trimTime?.let { it.second - it.first } ?: duration) * outputFps / outputSpeed / 1000.0).toInt()
 
@@ -68,25 +68,53 @@ data class TaskBuilderVideoToGif(
     ) + (colorKey?.let { ",colorkey=#${it.first}:${it.second / 100f}:0" } ?: "") + (",reverse").toEmptyStringIf { !reverse } +
       "\" \"${MyConstants.VIDEO_TO_GIF_EXTRACTED_FRAMES_PATH}%06d.bmp\""
 
-  fun getCommandCreatePalette() =
-    "$FFMPEG_COMMAND_PREFIX_FOR_ALL_AN -i \"${MyConstants.VIDEO_TO_GIF_EXTRACTED_FRAMES_PATH}%06d.bmp\" " + "-vf palettegen=max_colors=${colorQuality}:stats_mode=diff -y \"${MyConstants.PALETTE_PATH}\""
+  fun getCommandCreatePalette(): String = buildPaletteCommand(
+    framesPath = MyConstants.VIDEO_TO_GIF_EXTRACTED_FRAMES_PATH,
+    colorQuality = colorQuality,
+    palettePath = MyConstants.PALETTE_PATH,
+    colorFilter = colorFilter,
+  )
 
-  fun getCommandVideoToGif() =
-    "$FFMPEG_COMMAND_PREFIX_FOR_ALL_AN -framerate $outputFps -i \"${MyConstants.VIDEO_TO_GIF_EXTRACTED_FRAMES_PATH}%06d.bmp\" -i \"${MyConstants.PALETTE_PATH}\" " + "-filter_complex paletteuse=dither=bayer -final_delay $finalDelay -y \"$OUTPUT_GIF_TEMP_PATH\""
+  fun getCommandVideoToGif(): String = buildGifCommand(
+    framesPath = MyConstants.VIDEO_TO_GIF_EXTRACTED_FRAMES_PATH,
+    palettePath = MyConstants.PALETTE_PATH,
+    outputPath = OUTPUT_GIF_TEMP_PATH,
+    fps = outputFps,
+    finalDelay = finalDelay,
+    colorFilter = colorFilter,
+  )
 
   fun getCommandVideoToWebp(): String = buildWebpCommand(
     framesPath = MyConstants.VIDEO_TO_GIF_EXTRACTED_FRAMES_PATH,
     outputPath = OUTPUT_WEBP_TEMP_PATH,
     fps = outputFps,
     quality = checkNotNull(webpQuality) { "webpQuality must be set when outputFormat == ANIMATED_WEBP" },
+    vfChain = colorFilter.vfChain,
   )
 
   companion object {
-    /** Pure command builder — extracted so it can be tested without Android context. */
-    internal fun buildWebpCommand(framesPath: String, outputPath: String, fps: Int, quality: WebpQuality): String {
-      val qualityFlags = if (quality.lossless) "-lossless 1" else "-quality ${quality.ffmpegQuality}"
+    /** Pure command builders — extracted so they can be tested without Android context. */
+    internal fun buildPaletteCommand(framesPath: String, colorQuality: Int, palettePath: String, colorFilter: ExportColorFilter): String {
+      val vfPrefix = colorFilter.vfChain?.let { "$it," } ?: ""
+      val maxColors = if (colorFilter == ExportColorFilter.VINTAGE) 64 else colorQuality
+      return "$FFMPEG_COMMAND_PREFIX_FOR_ALL_AN -i \"${framesPath}%06d.bmp\" " +
+        "-vf ${vfPrefix}palettegen=max_colors=${maxColors}:stats_mode=diff -y \"$palettePath\""
+    }
+
+    internal fun buildGifCommand(framesPath: String, palettePath: String, outputPath: String, fps: Int, finalDelay: Int, colorFilter: ExportColorFilter): String {
+      val filterComplex = colorFilter.vfChain?.let {
+        "\"[0:v]$it[v];[v][1:v]paletteuse=dither=bayer\""
+      } ?: "paletteuse=dither=bayer"
       return "$FFMPEG_COMMAND_PREFIX_FOR_ALL_AN -framerate $fps " +
-        "-i \"${framesPath}%06d.bmp\" $qualityFlags -compression_level 6 -loop 0 -y \"$outputPath\""
+        "-i \"${framesPath}%06d.bmp\" -i \"$palettePath\" " +
+        "-filter_complex $filterComplex -final_delay $finalDelay -y \"$outputPath\""
+    }
+
+    internal fun buildWebpCommand(framesPath: String, outputPath: String, fps: Int, quality: WebpQuality, vfChain: String? = null): String {
+      val qualityFlags = if (quality.lossless) "-lossless 1" else "-quality ${quality.ffmpegQuality}"
+      val vfArg = vfChain?.let { "-vf \"$it\" " } ?: ""
+      return "$FFMPEG_COMMAND_PREFIX_FOR_ALL_AN -framerate $fps " +
+        "-i \"${framesPath}%06d.bmp\" ${vfArg}$qualityFlags -compression_level 6 -loop 0 -y \"$outputPath\""
     }
   }
 }

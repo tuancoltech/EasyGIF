@@ -3,10 +3,13 @@ package com.nht.gif.ui.videotogif
 import com.nht.gif.CropParams
 import com.nht.gif.data.EstimationSettings
 import com.nht.gif.data.FileSizeEstimator
+import com.nht.gif.ui.videotogif.FilterThumbGenerator
 import com.nht.gif.model.EstimationState
+import com.nht.gif.model.ExportColorFilter
 import com.nht.gif.model.OutputFormat
 import com.nht.gif.model.WebpQuality
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.mockk
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.Dispatchers
@@ -29,6 +32,7 @@ class VideoToGifExportOptionsViewModelTest {
 
   private val testDispatcher = StandardTestDispatcher()
   private val mockEstimator: FileSizeEstimator = mockk(relaxed = true)
+  private val mockThumbGenerator: FilterThumbGenerator = mockk(relaxed = true)
   private val testCropParams = CropParams(640, 480, 0, 0)
 
   @Before
@@ -41,14 +45,17 @@ class VideoToGifExportOptionsViewModelTest {
     Dispatchers.resetMain()
   }
 
-  private fun createViewModel(estimator: FileSizeEstimator = mockEstimator) =
-    VideoToGifExportOptionsViewModel(
-      inputVideoPath = "/data/test.mp4",
-      duration = 5000,
-      cropParams = testCropParams,
-      outputSpeed = 1f,
-      estimator = estimator,
-    )
+  private fun createViewModel(
+    estimator: FileSizeEstimator = mockEstimator,
+    thumbGenerator: FilterThumbGenerator = mockThumbGenerator,
+  ) = VideoToGifExportOptionsViewModel(
+    inputVideoPath = "/data/test.mp4",
+    duration = 5000,
+    cropParams = testCropParams,
+    outputSpeed = 1f,
+    estimator = estimator,
+    thumbGenerator = thumbGenerator,
+  )
 
   // T1.8
   @Test
@@ -72,6 +79,23 @@ class VideoToGifExportOptionsViewModelTest {
     viewModel.setOutputFormat(OutputFormat.ANIMATED_WEBP)
     viewModel.setOutputFormat(OutputFormat.GIF)
     assertEquals(OutputFormat.GIF, viewModel.outputFormat.value)
+  }
+
+  // T1.11
+  @Test
+  fun `colorFilter defaults to NONE on creation`() {
+    val viewModel = createViewModel()
+    assertEquals(ExportColorFilter.NONE, viewModel.colorFilter.value)
+  }
+
+  // T1.14
+  @Test
+  fun `setColorFilter updates colorFilter state for each preset`() {
+    val viewModel = createViewModel()
+    ExportColorFilter.entries.forEach { filter ->
+      viewModel.setColorFilter(filter)
+      assertEquals(filter, viewModel.colorFilter.value)
+    }
   }
 
   // T2.13
@@ -181,5 +205,16 @@ class VideoToGifExportOptionsViewModelTest {
     assertEquals(2, callCount)
     assertEquals(WebpQuality.SMALL, lastSettings?.webpQuality)
     assertEquals(EstimationState.Ready(10L, 20L), viewModel.estimationState.value)
+  }
+
+  // T2.14
+  @Test
+  fun `loadThumbnails is idempotent — generate is called exactly once even when invoked twice`() = runTest {
+    val generator = mockk<FilterThumbGenerator>(relaxed = true)
+    val viewModel = createViewModel(thumbGenerator = generator)
+    viewModel.loadThumbnails()
+    viewModel.loadThumbnails()
+    advanceUntilIdle()
+    coVerify(exactly = 1) { generator.generate(any()) }
   }
 }

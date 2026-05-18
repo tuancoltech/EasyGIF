@@ -1,9 +1,11 @@
 package com.nht.gif.ui.videotogif
 
+import android.graphics.Bitmap
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.nht.gif.CropParams
+import com.nht.gif.MyConstants
 import com.nht.gif.data.EstimationSettings
 import com.nht.gif.data.FileSizeEstimator
 import com.nht.gif.data.FileSizeEstimatorImpl
@@ -18,6 +20,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /** Holds UI state for the export-options dialog (format selection, quality presets, size estimates). */
@@ -27,6 +30,7 @@ class VideoToGifExportOptionsViewModel(
   private val cropParams: CropParams,
   private val outputSpeed: Float,
   private val estimator: FileSizeEstimator,
+  private val thumbGenerator: FilterThumbGenerator,
 ) : ViewModel() {
 
   private val _outputFormat = MutableStateFlow(OutputFormat.GIF)
@@ -54,10 +58,16 @@ class VideoToGifExportOptionsViewModel(
   private val _colorFilter = MutableStateFlow(ExportColorFilter.NONE)
   val colorFilter: StateFlow<ExportColorFilter> = _colorFilter.asStateFlow()
 
+  private val _filterThumbnails = MutableStateFlow<Map<ExportColorFilter, Result<Bitmap>?>>(
+    ExportColorFilter.entries.associateWith { null }
+  )
+  val filterThumbnails: StateFlow<Map<ExportColorFilter, Result<Bitmap>?>> = _filterThumbnails.asStateFlow()
+
   private val _estimationState = MutableStateFlow<EstimationState>(EstimationState.Loading)
   val estimationState: StateFlow<EstimationState> = _estimationState.asStateFlow()
 
   private var estimationJob: Job? = null
+  private var thumbnailJob: Job? = null
 
   init {
     viewModelScope.launch {
@@ -87,6 +97,16 @@ class VideoToGifExportOptionsViewModel(
   fun setLossy(lossy: Int?) { _lossy.value = lossy }
 
   fun setColorFilter(filter: ExportColorFilter) { _colorFilter.value = filter }
+
+  fun loadThumbnails() {
+    if (thumbnailJob != null) return
+    thumbnailJob = viewModelScope.launch {
+      thumbGenerator.generate { filter, bitmap ->
+        val result = if (bitmap != null) Result.success(bitmap) else Result.failure(Exception())
+        _filterThumbnails.update { it + (filter to result) }
+      }
+    }
+  }
 
   private fun scheduleEstimation() {
     estimationJob?.cancel()
@@ -131,11 +151,16 @@ class VideoToGifExportOptionsViewModel(
       cropParams: CropParams,
       outputSpeed: Float,
       estimator: FileSizeEstimator = FileSizeEstimatorImpl(),
+      thumbGenerator: FilterThumbGenerator = FilterThumbGeneratorImpl(
+        inputVideoPath = inputVideoPath,
+        clipDurationMs = duration.toLong(),
+        tempBaseDir = MyConstants.CACHE_DIR_PATH,
+      ),
     ): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
       @Suppress("UNCHECKED_CAST")
       override fun <T : ViewModel> create(modelClass: Class<T>): T =
         VideoToGifExportOptionsViewModel(
-          inputVideoPath, duration, cropParams, outputSpeed, estimator
+          inputVideoPath, duration, cropParams, outputSpeed, estimator, thumbGenerator
         ) as T
     }
   }
