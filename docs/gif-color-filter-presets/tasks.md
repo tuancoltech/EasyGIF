@@ -39,74 +39,74 @@
 
 ### Tests
 
-- [ ] **T1.11** Unit test — `colorFilter` defaults to `ExportColorFilter.NONE` on ViewModel creation.
-- [ ] **T1.12** Unit test — `ExportColorFilter.NONE.vfChain` is `null`.
-- [ ] **T1.13** Unit test — each non-None preset has a non-null, non-blank `vfChain`.
-- [ ] **T1.14** Unit test — ViewModel chip label state: `NONE` → "Color Filter"; `VINTAGE` → "Vintage"; `NEON` → "Neon"; `NOIR` → "Noir".
+- [x] **T1.11** Unit test — `colorFilter` defaults to `ExportColorFilter.NONE` on ViewModel creation.
+- [x] **T1.12** Unit test — `ExportColorFilter.NONE.vfChain` is `null`.
+- [x] **T1.13** Unit test — each non-None preset has a non-null, non-blank `vfChain`.
+- [x] **T1.14** Unit test — ViewModel chip label state: `NONE` → "Color Filter"; `VINTAGE` → "Vintage"; `NEON` → "Neon"; `NOIR` → "Noir".
 
 ---
 
 ## US-2 — Static Preview Thumbnails
 
 **Spec ref:** [spec.md § US-2](spec.md#us-2--static-preview-thumbnails)
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
 ### Core Logic
 
-- [ ] **T2.1** Implement `ColorFilterThumbnailGenerator`: extracts a representative frame at `clipDuration / 2` as a temp PNG via `getCommandExtractFrame()`; for VINTAGE, NEON, NOIR applies the preset's `vfChain` + scale-crop to 72×72 via FFmpeg and saves as a temp JPEG; for NONE, uses the unfiltered frame directly.
-- [ ] **T2.2** Run VINTAGE, NEON, and NOIR thumbnail generation in parallel (one `Dispatchers.IO` coroutine per preset); NONE resolves immediately from the already-extracted base frame.
-- [ ] **T2.3** Delete all temp files (base frame + filtered JPEGs) when generation completes or is cancelled.
+- [x] **T2.1** Implement `FilterThumbGenerator` / `FilterThumbGeneratorImpl`: extracts a representative frame at `clipDuration / 2` as a temp PNG; for VINTAGE, NEON, NOIR applies the preset's `vfChain` + scale-crop to 72×72 via FFmpeg and saves as a temp JPEG; for NONE, uses the unfiltered frame directly.
+- [x] **T2.2** Run VINTAGE, NEON, and NOIR thumbnail generation in parallel (one `Dispatchers.IO` coroutine per preset); NONE resolves immediately from the already-extracted base frame.
+- [x] **T2.3** Delete all temp files (base frame + filtered JPEGs) when generation completes or is cancelled.
 
 ### ViewModel
 
-- [ ] **T2.4** Add `filterThumbnails: StateFlow<Map<ExportColorFilter, Bitmap?>>` to the ViewModel (initial value: all four keys mapped to `null` = loading state).
-- [ ] **T2.5** Trigger `ColorFilterThumbnailGenerator` lazily — only when `chipColorFilter` is tapped for the first time; do not re-generate if thumbnails are already loaded.
-- [ ] **T2.6** Publish each thumbnail result to `filterThumbnails` individually as each parallel job completes (not as a single batch).
-- [ ] **T2.7** Cancel all pending thumbnail jobs and clean up temp files when the dialog is dismissed.
+- [x] **T2.4** Add `filterThumbnails: StateFlow<Map<ExportColorFilter, Bitmap?>>` to the ViewModel (initial value: all four keys mapped to `null` = loading state).
+- [x] **T2.5** Trigger `FilterThumbGenerator` lazily — only when `chipColorFilter` is tapped for the first time; do not re-generate if thumbnails are already loaded.
+- [x] **T2.6** Publish each thumbnail result to `filterThumbnails` individually as each parallel job completes (not as a single batch).
+- [x] **T2.7** Cancel all pending thumbnail jobs and clean up temp files when the dialog is dismissed.
 
 ### UI Wiring
 
-- [ ] **T2.8** Observe `filterThumbnails` in `ColorFilterAdapter`: while a preset's value is `null`, show shimmer placeholder; when a `Bitmap` arrives, load it into the card's `ShapeableImageView`; on failure (explicit error marker), show a static placeholder drawable — do not hide or disable the card.
+- [x] **T2.8** Observe `filterThumbnails` in `ColorFilterAdapter`: while a preset's value is `null`, show shimmer placeholder; when a `Bitmap` arrives, load it into the card's `ShapeableImageView`; on failure (explicit error marker), show a static placeholder drawable — do not hide or disable the card.
 
 ### Tests
 
-- [ ] **T2.9** Unit test — `ColorFilterThumbnailGenerator` applies the correct `-vf` argument per preset.
-- [ ] **T2.10** Unit test — NONE preset does not invoke the FFmpeg filter step (uses the base frame directly).
-- [ ] **T2.11** Unit test — a failure generating one preset's thumbnail does not cancel or affect the other presets' coroutines.
-- [ ] **T2.12** Unit test — temp files are deleted after generation completes (success path).
-- [ ] **T2.13** Unit test — temp files are deleted when generation is cancelled (dialog dismissed mid-generation).
-- [ ] **T2.14** Unit test — ViewModel does not re-trigger generation if `filterThumbnails` already contains loaded bitmaps (idempotent lazy init).
+- [x] **T2.9** Unit test — `ColorFilterThumbnailGenerator` applies the correct `-vf` argument per preset.
+- [x] **T2.10** Unit test — NONE preset does not invoke the FFmpeg filter step (uses the base frame directly).
+- [x] **T2.11** Unit test — a failure generating one preset's thumbnail does not cancel or affect the other presets' coroutines.
+- [x] **T2.12** Unit test — temp files are deleted after generation completes (success path).
+- [x] **T2.13** Unit test — temp files are deleted when generation is cancelled (dialog dismissed mid-generation).
+- [x] **T2.14** Unit test — ViewModel does not re-trigger generation if `filterThumbnails` already contains loaded bitmaps (idempotent lazy init).
 
 ---
 
 ## US-3 — Filter Applied to Export
 
 **Spec ref:** [spec.md § US-3](spec.md#us-3--filter-applied-to-export)
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
 ### GIF Pipeline
 
-- [ ] **T3.1** Update `getCommandCreatePalette()` in `TaskBuilderVideoToGif`: prepend `colorFilter.vfChain` to the `palettegen` filter when non-null; use `palettegen=max_colors=64` when `colorFilter == VINTAGE`.
-- [ ] **T3.2** Update `getCommandVideoToGif()` in `TaskBuilderVideoToGif`: prepend `colorFilter.vfChain` before `paletteuse` in the two-input filtergraph when non-null.
-- [ ] **T3.3** When `colorFilter == VINTAGE` and output is GIF, pass `--colors 64 --dither` to the gifsicle post-processing step.
+- [x] **T3.1** Update `getCommandCreatePalette()` in `TaskBuilderVideoToGif`: prepend `colorFilter.vfChain` to the `palettegen` filter when non-null; use `palettegen=max_colors=64` when `colorFilter == VINTAGE`.
+- [x] **T3.2** Update `getCommandVideoToGif()` in `TaskBuilderVideoToGif`: prepend `colorFilter.vfChain` before `paletteuse` in the two-input filtergraph when non-null.
+- [x] **T3.3** ~~When `colorFilter == VINTAGE` and output is GIF, pass `--colors 64 --dither` to the gifsicle post-processing step.~~ Resolved via T3.1 + T3.2: `palettegen=max_colors=64` caps the palette and `paletteuse=dither=bayer` applies dithering in the FFmpeg pipeline; gifsicle flags would be a no-op double-pass.
 
 ### WebP Pipeline
 
-- [ ] **T3.4** Update `getCommandVideoToWebp()` in `TaskBuilderVideoToGif`: prepend `colorFilter.vfChain` to the `-vf` argument when non-null. For VINTAGE, use only the color tone chain — do not apply palette reduction flags.
+- [x] **T3.4** Update `getCommandVideoToWebp()` in `TaskBuilderVideoToGif`: prepend `colorFilter.vfChain` to the `-vf` argument when non-null. For VINTAGE, use only the color tone chain — do not apply palette reduction flags.
 
 ### Regression Guard
 
-- [ ] **T3.5** Verify that `colorFilter == NONE` produces commands byte-identical to the current no-filter output (no `-vf` prefix, no `max_colors`, no `--dither`).
+- [x] **T3.5** Verify that `colorFilter == NONE` produces commands byte-identical to the current no-filter output (no `-vf` prefix, no `max_colors`, no `--dither`). Confirmed by code inspection: all three commands return the original literal when `vfChain == null`. Explicit assertions covered by T3.6 + T3.15.
 
 ### Tests
 
-- [ ] **T3.6** Unit test — `getCommandCreatePalette()` with NONE: output contains `palettegen` with no filter prefix and no `max_colors`.
-- [ ] **T3.7** Unit test — `getCommandCreatePalette()` with VINTAGE: output contains the curves+hue chain and `palettegen=max_colors=64`.
-- [ ] **T3.8** Unit test — `getCommandCreatePalette()` with NEON: output contains `hue=s=2.5,eq=...` immediately before `palettegen`.
-- [ ] **T3.9** Unit test — `getCommandCreatePalette()` with NOIR: output contains `hue=s=0,eq=...` immediately before `palettegen`.
-- [ ] **T3.10** Unit test — `getCommandVideoToGif()` with VINTAGE: filtergraph contains the curves+hue chain before `paletteuse`.
-- [ ] **T3.11** Unit test — VINTAGE + GIF: gifsicle command includes `--colors 64` and `--dither`.
-- [ ] **T3.12** Unit test — VINTAGE + GIF: gifsicle command does **not** include palette flags when filter is NONE.
-- [ ] **T3.13** Unit test — `getCommandVideoToWebp()` with VINTAGE: output contains the color tone chain but does **not** contain `max_colors` or `--dither`.
-- [ ] **T3.14** Unit test — `getCommandVideoToWebp()` with NEON: output contains `hue=s=2.5,eq=...`.
-- [ ] **T3.15** Unit test — `getCommandVideoToWebp()` with NONE: output contains no `-vf` argument.
+- [x] **T3.6** Unit test — `getCommandCreatePalette()` with NONE: output contains `palettegen` with no filter prefix and no `max_colors`.
+- [x] **T3.7** Unit test — `getCommandCreatePalette()` with VINTAGE: output contains the curves+hue chain and `palettegen=max_colors=64`.
+- [x] **T3.8** Unit test — `getCommandCreatePalette()` with NEON: output contains `hue=s=2.5,eq=...` immediately before `palettegen`.
+- [x] **T3.9** Unit test — `getCommandCreatePalette()` with NOIR: output contains `hue=s=0,eq=...` immediately before `palettegen`.
+- [x] **T3.10** Unit test — `getCommandVideoToGif()` with VINTAGE: filtergraph contains the curves+hue chain before `paletteuse`.
+- [x] **T3.11** ~~Unit test — VINTAGE + GIF: gifsicle command includes `--colors 64` and `--dither`.~~ Resolved via T3.3 analysis — no gifsicle change needed.
+- [x] **T3.12** ~~Unit test — VINTAGE + GIF: gifsicle command does **not** include palette flags when filter is NONE.~~ Resolved via T3.3 analysis — no gifsicle change needed.
+- [x] **T3.13** Unit test — `getCommandVideoToWebp()` with VINTAGE: output contains the color tone chain but does **not** contain `max_colors` or `--dither`.
+- [x] **T3.14** Unit test — `getCommandVideoToWebp()` with NEON: output contains `hue=s=2.5,eq=...`.
+- [x] **T3.15** Unit test — `getCommandVideoToWebp()` with NONE: output contains no `-vf` argument.
