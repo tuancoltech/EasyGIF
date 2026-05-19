@@ -5,7 +5,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.nht.gif.CropParams
+import com.nht.gif.ExportConfig
 import com.nht.gif.MyConstants
+import com.nht.gif.TaskBuilderVideoToGif
+import com.nht.gif.TextRender
+import com.nht.gif.VideoInput
 import com.nht.gif.data.EstimationSettings
 import com.nht.gif.data.FileSizeEstimator
 import com.nht.gif.data.FileSizeEstimatorImpl
@@ -13,17 +17,22 @@ import com.nht.gif.model.EstimationState
 import com.nht.gif.model.ExportColorFilter
 import com.nht.gif.model.ExportLoopMode
 import com.nht.gif.model.OutputFormat
+import com.nht.gif.model.QualityTier
 import com.nht.gif.model.WebpQuality
+import com.nht.gif.model.formatEstimatedSize
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -94,6 +103,37 @@ class VideoToGifExportOptionsViewModel(
 
   private val _estimationState = MutableStateFlow<EstimationState>(EstimationState.Loading)
   val estimationState: StateFlow<EstimationState> = _estimationState.asStateFlow()
+
+  /** Human-readable GIF size string derived from [estimationState], e.g. "GIF ~1.2 MB". */
+  val gifSizeText: StateFlow<String> = _estimationState.map { state ->
+    if (state is EstimationState.Ready) "GIF ${formatEstimatedSize(state.gifSizeBytes)}" else "GIF —"
+  }.stateIn(viewModelScope, SharingStarted.Eagerly, "GIF —")
+
+  /** Human-readable WebP size string derived from [estimationState], e.g. "WebP ~0.8 MB". */
+  val webpSizeText: StateFlow<String> = _estimationState.map { state ->
+    if (state is EstimationState.Ready) "WebP ${formatEstimatedSize(state.webpSizeBytes)}" else "WebP —"
+  }.stateIn(viewModelScope, SharingStarted.Eagerly, "WebP —")
+
+  /** Quality tier for the GIF clarity (lossy) control; used to label the size estimate row. */
+  val clarityTier: StateFlow<QualityTier> = _lossy.map { lossy ->
+    when (lossy) {
+      200 -> QualityTier.LOW
+      70 -> QualityTier.MID
+      30 -> QualityTier.HIGH
+      null -> QualityTier.MAX
+      else -> QualityTier.HIGH
+    }
+  }.stateIn(viewModelScope, SharingStarted.Eagerly, QualityTier.HIGH)
+
+  /** Quality tier for the WebP quality control; used to label the size estimate row. */
+  val webpQualityTier: StateFlow<QualityTier> = _webpQuality.map { quality ->
+    when (quality) {
+      WebpQuality.SMALL -> QualityTier.LOW
+      WebpQuality.MEDIUM -> QualityTier.MID
+      WebpQuality.HIGH -> QualityTier.HIGH
+      WebpQuality.LOSSLESS -> QualityTier.BEST
+    }
+  }.stateIn(viewModelScope, SharingStarted.Eagerly, QualityTier.MID)
 
   private val _isDetecting = MutableStateFlow(false)
 
@@ -227,6 +267,41 @@ class VideoToGifExportOptionsViewModel(
   fun onSmartTrimDialogResult(useSmartTrim: Boolean, originalEndMs: Long, detectedEndMs: Long) {
     _smartTrimEvent.trySend(SmartTrimEvent.Proceed(overrideEndMs = if (useSmartTrim) detectedEndMs else null))
   }
+
+  /**
+   * Assembles a [TaskBuilderVideoToGif] from the ViewModel's current state plus the view-only
+   * parameters that cannot be held in the ViewModel (trim range, text overlay, video dimensions,
+   * final-delay flag, and colour-key selection).
+   */
+  fun buildTask(
+    trimTime: Pair<Int, Int>?,
+    textRender: TextRender?,
+    videoWH: Pair<Int, Int>,
+    finalDelay: Int,
+    colorKey: Pair<String, Int>?,
+  ): TaskBuilderVideoToGif = TaskBuilderVideoToGif(
+    input = VideoInput(
+      path = inputVideoPath,
+      trimTime = trimTime,
+      videoWH = videoWH,
+      duration = duration,
+      cropParams = cropParams,
+    ),
+    config = ExportConfig(
+      fps = fps.value,
+      shortLength = shortLength.value,
+      outputSpeed = outputSpeed,
+      colorQuality = colorQuality.value,
+      loopMode = loopMode.value,
+      lossy = lossy.value,
+      finalDelay = finalDelay,
+      colorKey = colorKey,
+      outputFormat = outputFormat.value,
+      webpQuality = if (outputFormat.value == OutputFormat.ANIMATED_WEBP) webpQuality.value else null,
+      colorFilter = colorFilter.value,
+      textRender = textRender,
+    ),
+  )
 
   override fun onCleared() {
     super.onCleared()

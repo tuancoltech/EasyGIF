@@ -48,7 +48,7 @@ class VideoToGifPerformerActivity : BaseActivity() {
   }
 
   private fun performPart1() {
-    val label = if (taskBuilder.outputFormat == OutputFormat.ANIMATED_WEBP)
+    val label = if (taskBuilder.config.outputFormat == OutputFormat.ANIMATED_WEBP)
       getString(R.string.exporting_webp_) else getString(R.string.exporting_gif_)
     putProgress(0, label)
     FileTools.resetDirectory(VIDEO_TO_GIF_EXTRACTED_FRAMES_PATH)
@@ -57,7 +57,7 @@ class VideoToGifPerformerActivity : BaseActivity() {
     FFmpegKit.executeAsync(command, { completeCallback ->
       when {
         completeCallback.returnCode.isValueSuccess ->
-          if (taskBuilder.outputFormat == OutputFormat.ANIMATED_WEBP) performWebpEncoding()
+          if (taskBuilder.config.outputFormat == OutputFormat.ANIMATED_WEBP) performWebpEncoding()
           else performPart2()
         completeCallback.returnCode.isValueError -> quitOrFailed(getString(R.string.an_error_occurred))
       }
@@ -84,7 +84,7 @@ class VideoToGifPerformerActivity : BaseActivity() {
 
   private fun performWebpSave() {
     if (!taskQuitOrFailed) {
-      val outputUri = createNewFile(FileTools.FileName(taskBuilder.inputVideoPath).nameWithoutExtension, "webp")
+      val outputUri = createNewFile(FileTools.FileName(taskBuilder.input.path).nameWithoutExtension, "webp")
       copyFile(OUTPUT_WEBP_TEMP_PATH, outputUri, true)
       finish()
       FileSavedActivity.start(this@VideoToGifPerformerActivity, outputUri)
@@ -121,19 +121,17 @@ class VideoToGifPerformerActivity : BaseActivity() {
   }
 
   private fun performPart4() {
-    with(taskBuilder) {
-      lossy?.let {
-        putProgress(null, getString(R.string.compressing_gif_raw_size, previousUpdatedFileSize.formattedFileSize()))
-        logRed("gifsicleLossy", "start rtime")
-        MediaTools.gifsicleLossy(it, OUTPUT_GIF_TEMP_PATH, null, true)
-        logRed("gifsicleLossy", "end rtime")
-      }
-      if (!taskQuitOrFailed) {
-        val outputUri = createNewFile(FileTools.FileName(inputVideoPath).nameWithoutExtension, "gif")
-        copyFile(OUTPUT_GIF_TEMP_PATH, outputUri, true)
-        finish()
-        FileSavedActivity.start(this@VideoToGifPerformerActivity, outputUri)
-      }
+    taskBuilder.config.lossy?.let {
+      putProgress(null, getString(R.string.compressing_gif_raw_size, previousUpdatedFileSize.formattedFileSize()))
+      logRed("gifsicleLossy", "start rtime")
+      MediaTools.gifsicleLossy(it, OUTPUT_GIF_TEMP_PATH, null, true)
+      logRed("gifsicleLossy", "end rtime")
+    }
+    if (!taskQuitOrFailed) {
+      val outputUri = createNewFile(FileTools.FileName(taskBuilder.input.path).nameWithoutExtension, "gif")
+      copyFile(OUTPUT_GIF_TEMP_PATH, outputUri, true)
+      finish()
+      FileSavedActivity.start(this@VideoToGifPerformerActivity, outputUri)
     }
   }
 

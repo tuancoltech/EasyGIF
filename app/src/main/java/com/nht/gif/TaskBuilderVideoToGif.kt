@@ -3,7 +3,6 @@ package com.nht.gif
 import com.nht.gif.MyConstants.ADD_TEXT_RENDER_PNG_PATH
 import com.nht.gif.model.ExportColorFilter
 import com.nht.gif.model.ExportLoopMode
-import com.nht.gif.model.OutputFormat
 import com.nht.gif.model.WebpQuality
 import com.nht.gif.MyConstants.FFMPEG_COMMAND_PREFIX_FOR_ALL_AN
 import com.nht.gif.MyConstants.OUTPUT_GIF_TEMP_PATH
@@ -14,92 +13,61 @@ import kotlin.math.ceil
 import kotlin.math.min
 
 /**
- * Immutable data class that holds all export parameters for a video-to-GIF (or Animated WebP)
- * conversion task and acts as a command builder for each stage of the FFmpeg pipeline.
+ * Immutable command-builder for a video-to-GIF (or Animated WebP) export task.
  *
- * Construction triggers an [init] block that renders the optional [textRender] overlay to a PNG
- * file on disk; the resulting PNG is then referenced by every subsequent command produced by this
- * class. Because of this side-effect, the pure command-builder logic lives in [Companion] static
- * functions so it can be tested independently without touching the filesystem.
+ * Bundles [VideoInput] (source facts) and [ExportConfig] (output settings), and produces the
+ * FFmpeg shell commands for each stage of the encoding pipeline.
+ *
+ * Construction triggers an [init] block that renders the optional text overlay from
+ * [ExportConfig.textRender] to a PNG file on disk; every subsequent command references that PNG.
+ * The pure command-builder logic lives in [Companion] static functions so it can be tested
+ * independently without touching the filesystem.
  */
 data class TaskBuilderVideoToGif(
-  /** Absolute path to the source video file passed to FFmpeg as the primary input. */
-  val inputVideoPath: String,
-  /** Trim window in milliseconds: first = start, second = end. `null` means no trim (use the full
-   *  video). Stored as [Pair] rather than [IntRange] because [IntRange] is not [Serializable]. */
-  val trimTime: Pair<Int, Int>?,
-  /** Crop rectangle and output dimensions derived from the user's crop gesture. */
-  val cropParams: CropParams,
-  /** Target resolution of the short side in pixels. 0 means "use original resolution". */
-  val shortLength: Int,
-  /** Playback speed multiplier applied via `setpts=PTS/<speed>` (e.g. 2.0 = double speed). */
-  val outputSpeed: Float,
-  /** Target frame rate for the output animation, passed as `fps=fps=<value>` in the filter chain. */
-  val outputFps: Int,
-  /** Maximum number of palette colors for GIF encoding (1–256). Higher values yield better colour
-   *  fidelity at the cost of file size. */
-  val colorQuality: Int,
-  /** Loop mode applied during frame extraction: [ExportLoopMode.FORWARD] plays frames as-is,
-   *  [ExportLoopMode.REVERSE] reverses them, and [ExportLoopMode.BOOMERANG] appends a reversed
-   *  copy so the animation loops back and forth. */
-  val loopMode: ExportLoopMode = ExportLoopMode.FORWARD,
+  val input: VideoInput,
+  val config: ExportConfig,
   /** Whether the trim end point was adjusted by Smart Trim detection. Stored for provenance;
-   *  the actual trim is already baked into [trimTime] by the time this object is constructed. */
+   *  the actual trim is already baked into [VideoInput.trimTime] by the time this object is
+   *  constructed. */
   val smartTrim: Boolean = false,
-  /** Optional text overlay rendered on every frame. `null` means no text is composited. */
-  val textRender: TextRender?,
-  /** Lossy compression level forwarded to gifsicle post-processing (0–200). `null` disables
-   *  lossy compression and produces a lossless GIF. */
-  val lossy: Int?,
-  /** Original width and height of the source video in pixels, used to compute the text overlay
-   *  canvas size and to drive crop/scale calculations. */
-  val videoWH: Pair<Int, Int>,
-  /** Total duration of the source video in milliseconds, used as the fallback end point when
-   *  [trimTime] is `null`. */
-  val duration: Int,
-  /** The interval between every loops, in centi seconds. (1 == 0.01 sec) */
-  val finalDelay: Int,
-  /** Color(RRGGBB), Similarity * 100 */
-  val colorKey: Pair<String, Int>?,
-  /** Target output container format: [OutputFormat.GIF] or [OutputFormat.ANIMATED_WEBP]. */
-  val outputFormat: OutputFormat = OutputFormat.GIF,
-  /** null when outputFormat == GIF; MEDIUM by default when outputFormat == ANIMATED_WEBP */
-  val webpQuality: WebpQuality? = null,
-  /** Color filter preset applied during palette generation and final encoding. Defaults to
-   *  [ExportColorFilter.NONE] (no filter). */
-  val colorFilter: ExportColorFilter = ExportColorFilter.NONE,
 ) : Serializable {
 
   init {
-    TextRender.render(textRender, videoWH.first, videoWH.second).saveToPng(ADD_TEXT_RENDER_PNG_PATH)
+    TextRender.render(config.textRender, input.videoWH.first, input.videoWH.second)
+      .saveToPng(ADD_TEXT_RENDER_PNG_PATH)
   }
 
   /**
    * Returns a lightweight [TaskBuilderVideoToGifForPreview] containing only the parameters needed
    * by the in-app preview renderer, avoiding the overhead of a full task object.
    */
-  fun getForPreviewOnly() = TaskBuilderVideoToGifForPreview(shortLength, colorQuality, lossy, videoWH, colorKey, colorFilter)
+  fun getForPreviewOnly() = TaskBuilderVideoToGifForPreview(
+    config.shortLength, config.colorQuality, config.lossy, input.videoWH, config.colorKey, config.colorFilter
+  )
 
   /**
-   * Returns the estimated number of output frames computed from the trimmed duration, [outputFps],
-   * and [outputSpeed]. Used to track encoding progress.
+   * Returns the estimated number of output frames computed from the trimmed duration, fps,
+   * and output speed. Used to track encoding progress.
    */
-  fun getOutputFramesEstimated() = ceil((trimTime?.let { it.second - it.first } ?: duration) * outputFps / outputSpeed / 1000.0).toInt()
+  fun getOutputFramesEstimated() = ceil(
+    (input.trimTime?.let { it.second - it.first } ?: input.duration) *
+      config.fps / config.outputSpeed / 1000.0
+  ).toInt()
 
   /**
    * Builds the FFmpeg command that extracts frames from the source video into individual BMP files,
    * applying speed, frame rate, crop, resolution, loop mode, text overlay, and colour-key filters.
    */
   fun getCommandExtractFrame(): String = buildExtractFrameCommand(
-    inputVideoPath = inputVideoPath,
+    inputVideoPath = input.path,
     textRenderPath = ADD_TEXT_RENDER_PNG_PATH,
-    trimTime = trimTime,
-    outputSpeed = outputSpeed,
-    outputFps = outputFps,
-    cropParams = cropParams,
-    shortLength = shortLength,
-    colorKey = colorKey,
-    loopMode = loopMode,
+    trimTime = input.trimTime,
+    outputSpeed = config.outputSpeed,
+    outputFps = config.fps,
+    cropParams = input.cropParams,
+    shortLength = config.shortLength,
+    colorKey = config.colorKey,
+    loopMode = config.loopMode,
     outputFramesPath = MyConstants.VIDEO_TO_GIF_EXTRACTED_FRAMES_PATH,
   )
 
@@ -109,9 +77,9 @@ data class TaskBuilderVideoToGif(
    */
   fun getCommandCreatePalette(): String = buildPaletteCommand(
     framesPath = MyConstants.VIDEO_TO_GIF_EXTRACTED_FRAMES_PATH,
-    colorQuality = colorQuality,
+    colorQuality = config.colorQuality,
     palettePath = MyConstants.PALETTE_PATH,
-    colorFilter = colorFilter,
+    colorFilter = config.colorFilter,
   )
 
   /**
@@ -122,21 +90,21 @@ data class TaskBuilderVideoToGif(
     framesPath = MyConstants.VIDEO_TO_GIF_EXTRACTED_FRAMES_PATH,
     palettePath = MyConstants.PALETTE_PATH,
     outputPath = OUTPUT_GIF_TEMP_PATH,
-    fps = outputFps,
-    finalDelay = finalDelay,
-    colorFilter = colorFilter,
+    fps = config.fps,
+    finalDelay = config.finalDelay,
+    colorFilter = config.colorFilter,
   )
 
   /**
    * Builds the FFmpeg command that assembles the extracted BMP frames into a final Animated WebP
-   * file. Requires [webpQuality] to be non-null; throws [IllegalStateException] otherwise.
+   * file. Requires [ExportConfig.webpQuality] to be non-null; throws [IllegalStateException] otherwise.
    */
   fun getCommandVideoToWebp(): String = buildWebpCommand(
     framesPath = MyConstants.VIDEO_TO_GIF_EXTRACTED_FRAMES_PATH,
     outputPath = OUTPUT_WEBP_TEMP_PATH,
-    fps = outputFps,
-    quality = checkNotNull(webpQuality) { "webpQuality must be set when outputFormat == ANIMATED_WEBP" },
-    vfChain = colorFilter.vfChain,
+    fps = config.fps,
+    quality = checkNotNull(config.webpQuality) { "webpQuality must be set when outputFormat == ANIMATED_WEBP" },
+    vfChain = config.colorFilter.vfChain,
   )
 
   companion object {
