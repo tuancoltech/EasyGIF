@@ -12,12 +12,13 @@ data class TaskBuilderVideoToGifForPreview(
   val colorKey: Pair<String, Int>?,
   val colorFilter: ExportColorFilter = ExportColorFilter.NONE,
 ) : Serializable {
-  fun getCache_shortLength() = "${MyConstants.VIDEO_TO_GIF_PREVIEW_CACHE_DIR}${shortLength}.png"
-  fun getCache_shortLength_colorKey() = getCache_shortLength() + (".${colorKey.toString().replace(" ", "")}.png").toEmptyStringIf { colorKey == null }
-  fun getCache_shortLength_colorKey_filter() =
-    if (colorFilter == ExportColorFilter.NONE) getCache_shortLength_colorKey()
-    else "${getCache_shortLength_colorKey()}.${colorFilter.name.lowercase()}.png"
-  fun getCache_filter_palettegen() = "${getCache_shortLength_colorKey_filter()}.${colorQuality}.png"
-  fun getCache_filter_paletteuse() = "${getCache_shortLength_colorKey_filter()}.${colorQuality}.gif"
-  fun getCache_filter_paletteuse_lossy() = getCache_filter_paletteuse() + (".$lossy.gif").toEmptyStringIf { lossy == null }
+  fun getCacheShortLength() = "${MyConstants.VIDEO_TO_GIF_PREVIEW_CACHE_DIR}${shortLength}.png"
+  fun getCacheShortLengthColorKey() = getCacheShortLength() + (".${colorKey.toString().replace(" ", "")}.png").toEmptyStringIf { colorKey == null }
+  fun getCacheShortLengthColorKeyFilter() =
+    if (colorFilter == ExportColorFilter.NONE) getCacheShortLengthColorKey()
+    else "${getCacheShortLengthColorKey()}.${colorFilter.name.lowercase()}.png"
+
+  fun getCacheFilterPaletteGen() = "${getCacheShortLengthColorKeyFilter()}.${colorQuality}.png"
+  fun getCacheFilterPaletteUse() = "${getCacheShortLengthColorKeyFilter()}.${colorQuality}.gif"
+  fun getCacheFilterPaletteUseLossy() = getCacheFilterPaletteUse() + (".$lossy.gif").toEmptyStringIf { lossy == null }
 }

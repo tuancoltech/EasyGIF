@@ -51,6 +51,7 @@ import com.nht.gif.toolbox.Toolbox.onClick
 import com.nht.gif.toolbox.Toolbox.toast
 import com.nht.gif.toolbox.Toolbox.visibleIf
 import kotlin.math.min
+import androidx.core.graphics.scale
 
 /**
  * Dialog fragment that presents all export-option controls for the Video-to-GIF pipeline.
@@ -94,17 +95,23 @@ class VideoToGifExportOptionsDialogFragment : DialogFragment() {
    *  each time the preview pipeline evaluates whether an intermediate output is already cached. */
   private val fileExistsCache = mutableSetOf<String>()
 
-  /**
-   * Inflates the dialog layout, wires all UI controls to the ViewModel, registers state observers,
-   * and renders the initial static preview frame. Dismisses immediately (without returning a usable
-   * view) if the host activity's video player is not yet ready, to avoid a crash on the range-slider
-   * values that are only populated after [VideoToGifActivity.mediaPlayerReady] is called.
-   */
-  @SuppressLint("ClickableViewAccessibility")
+  /** Inflates the dialog layout and returns the root view. All view setup is deferred to [onViewCreated]. */
   override fun onCreateView(
     inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
   ): View {
     _binding = DialogFragmentVideoToGifExportOptionsBinding.inflate(layoutInflater, container, false)
+    return binding.root
+  }
+
+  /**
+   * Wires all UI controls to the ViewModel, registers state observers, and renders the initial
+   * static preview frame. Dismisses immediately if the host activity's video player is not yet
+   * ready, to avoid a crash on the range-slider values that are only populated after
+   * [VideoToGifActivity.mediaPlayerReady] is called.
+   */
+  @SuppressLint("ClickableViewAccessibility")
+  override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+    super.onViewCreated(view, savedInstanceState)
 
     // The system can restore this dialog fragment (e.g. after a permission-revoke restart) before
     // VideoToGifActivity.mediaPlayerReady() has been called. At that point the rangeSlider has only
@@ -112,7 +119,7 @@ class VideoToGifExportOptionsDialogFragment : DialogFragment() {
     // Dismiss immediately and let the user re-open the dialog once the activity is fully ready.
     if (!vtgActivity.isVideoReady) {
       dismissAllowingStateLoss()
-      return binding.root
+      return
     }
 
     clearPreviewImageCache()
@@ -381,7 +388,6 @@ class VideoToGifExportOptionsDialogFragment : DialogFragment() {
     frame = vtgActivity.cropParams.crop(frame) // Crop
     binding.viewColorKeyIndicator.backgroundColor = vtgActivity.savedColorKeyColor ?: frame[0, 0]
     updatePreviewImage()
-    return binding.root
   }
 
   /**
@@ -451,44 +457,44 @@ class VideoToGifExportOptionsDialogFragment : DialogFragment() {
    * re-executed.
    */
   private fun renderPreviewImage(taskBuilder: TaskBuilderVideoToGifForPreview): Bitmap = with(taskBuilder) {
-    ensureCached(getCache_shortLength()) {
-      Bitmap.createScaledBitmap(frame, gifOutputWH(shortLength).first, gifOutputWH(shortLength).second, true)
-        .saveToPng(getCache_shortLength())
+    ensureCached(getCacheShortLength()) {
+      frame.scale(gifOutputWH(shortLength).first, gifOutputWH(shortLength).second)
+        .saveToPng(getCacheShortLength())
     }
-    ensureCached(getCache_shortLength_colorKey()) {
+    ensureCached(getCacheShortLengthColorKey()) {
       colorKey?.let { ck ->
-        val cmd = "$FFMPEG_COMMAND_PREFIX_FOR_ALL_AN -i \"${getCache_shortLength()}\" " +
-          "-vf colorkey=#${ck.first}:${ck.second / 100f}:0 -y \"${getCache_shortLength_colorKey()}\""
+        val cmd = "$FFMPEG_COMMAND_PREFIX_FOR_ALL_AN -i \"${getCacheShortLength()}\" " +
+          "-vf colorkey=#${ck.first}:${ck.second / 100f}:0 -y \"${getCacheShortLengthColorKey()}\""
         logRed("colorKey cmd", cmd)
         FFmpegKit.execute(cmd)
       }
     }
-    ensureCached(getCache_shortLength_colorKey_filter()) {
+    ensureCached(getCacheShortLengthColorKeyFilter()) {
       colorFilter.vfChain?.let { vfChain ->
         FFmpegKit.execute(
-          "$FFMPEG_COMMAND_PREFIX_FOR_ALL_AN -i \"${getCache_shortLength_colorKey()}\" " +
-            "-vf \"$vfChain\" -y \"${getCache_shortLength_colorKey_filter()}\""
+          "$FFMPEG_COMMAND_PREFIX_FOR_ALL_AN -i \"${getCacheShortLengthColorKey()}\" " +
+            "-vf \"$vfChain\" -y \"${getCacheShortLengthColorKeyFilter()}\""
         )
       }
     }
-    ensureCached(getCache_filter_palettegen()) {
+    ensureCached(getCacheFilterPaletteGen()) {
       FFmpegKit.execute(
-        "$FFMPEG_COMMAND_PREFIX_FOR_ALL_AN -i \"${getCache_shortLength_colorKey_filter()}\" " +
-          "-filter_complex palettegen=max_colors=$colorQuality:stats_mode=diff -y \"${getCache_filter_palettegen()}\""
+        "$FFMPEG_COMMAND_PREFIX_FOR_ALL_AN -i \"${getCacheShortLengthColorKeyFilter()}\" " +
+          "-filter_complex palettegen=max_colors=$colorQuality:stats_mode=diff -y \"${getCacheFilterPaletteGen()}\""
       )
     }
-    ensureCached(getCache_filter_paletteuse()) {
+    ensureCached(getCacheFilterPaletteUse()) {
       FFmpegKit.execute(
-        "$FFMPEG_COMMAND_PREFIX_FOR_ALL_AN -i \"${getCache_shortLength_colorKey_filter()}\" " +
-          "-i ${getCache_filter_palettegen()} -filter_complex \"[0:v][1:v] paletteuse=dither=bayer\" " +
-          "-y \"${getCache_filter_paletteuse()}\""
+        "$FFMPEG_COMMAND_PREFIX_FOR_ALL_AN -i \"${getCacheShortLengthColorKeyFilter()}\" " +
+          "-i ${getCacheFilterPaletteGen()} -filter_complex \"[0:v][1:v] paletteuse=dither=bayer\" " +
+          "-y \"${getCacheFilterPaletteUse()}\""
       )
     }
-    previewBitmapMap.getOrPut(this.copy(lossy = null)) { BitmapFactory.decodeFile(getCache_filter_paletteuse()) }
+    previewBitmapMap.getOrPut(this.copy(lossy = null)) { BitmapFactory.decodeFile(getCacheFilterPaletteUse()) }
     if (!previewBitmapMap.containsKey(this)) {
-      gifsicleLossy(lossy!!, getCache_filter_paletteuse(), getCache_filter_paletteuse_lossy(), false)
-      fileExistsCache += getCache_filter_paletteuse_lossy()
-      previewBitmapMap[this] = BitmapFactory.decodeFile(getCache_filter_paletteuse_lossy())
+      gifsicleLossy(lossy!!, getCacheFilterPaletteUse(), getCacheFilterPaletteUseLossy(), false)
+      fileExistsCache += getCacheFilterPaletteUseLossy()
+      previewBitmapMap[this] = BitmapFactory.decodeFile(getCacheFilterPaletteUseLossy())
     }
     previewBitmapMap[this]!!
   }
