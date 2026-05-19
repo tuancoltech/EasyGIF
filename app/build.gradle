@@ -94,5 +94,6 @@ dependencies {
   testImplementation libs.kotlinx.coroutines.test
 
   androidTestImplementation libs.androidx.test.junit
+  androidTestImplementation libs.androidx.test.rules
   androidTestImplementation libs.espresso.core
 }

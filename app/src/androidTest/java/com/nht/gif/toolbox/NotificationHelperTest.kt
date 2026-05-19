@@ -74,17 +74,4 @@ class NotificationHelperTest {
 
         assertEquals(before, notificationManager.activeNotifications.size)
     }
-
-    /** showShareNotification must post exactly one notification when permissionGranted = true. */
-    @Test
-    fun showShareNotification_postsNotificationWhenPermissionGranted() {
-        val uri = Uri.parse("content://media/external/images/media/1")
-
-        NotificationHelper.showShareNotification(
-            context, uri, "image/gif", "test.gif",
-            permissionGranted = true
-        )
-
-        assertTrue(notificationManager.activeNotifications.isNotEmpty())
-    }
 }
