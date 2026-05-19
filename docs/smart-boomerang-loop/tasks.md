@@ -54,27 +54,27 @@
 ## US-2 — Loop Mode Applied to Export
 
 **Spec ref:** [spec.md § US-2](spec.md#us-2--loop-mode-applied-to-export)
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
 ### Frame Extraction Pipeline
 
 All loop mode logic lives in `getCommandExtractFrame()`. `getCommandCreatePalette()`, `getCommandVideoToGif()`, and `getCommandVideoToWebp()` require no changes.
 
-- [ ] **T2.1** Update `getCommandExtractFrame()` for REVERSE: replace `(",reverse").toEmptyStringIf { !reverse }` with `(",reverse").toEmptyStringIf { loopMode != ExportLoopMode.REVERSE }`.
-- [ ] **T2.2** Update `getCommandExtractFrame()` for BOOMERANG: when `loopMode == BOOMERANG`, replace the simple `[out]` label at the end of the `-filter_complex` chain with the split→reverse→concat segment: `...[base]; [base]split[v1][v2]; [v2]reverse[v2r]; [v1][v2r]concat=n=2:v=1:a=0[out]`, mapping `[out]` to the BMP output.
+- [x] **T2.1** Update `getCommandExtractFrame()` for REVERSE: replace `(",reverse").toEmptyStringIf { !reverse }` with `(",reverse").toEmptyStringIf { loopMode != ExportLoopMode.REVERSE }`.
+- [x] **T2.2** Update `getCommandExtractFrame()` for BOOMERANG: when `loopMode == BOOMERANG`, replace the simple `[out]` label at the end of the `-filter_complex` chain with the split→reverse→concat segment: `...[base]; [base]split[v1][v2]; [v2]reverse[v2r]; [v1][v2r]concat=n=2:v=1:a=0[out]`, mapping `[out]` to the BMP output.
 
 ### Regression Guard
 
-- [ ] **T2.3** Verify `loopMode == FORWARD` produces a `getCommandExtractFrame()` output byte-identical to the former `reverse = false` output.
+- [x] **T2.3** Verify `loopMode == FORWARD` produces a `getCommandExtractFrame()` output byte-identical to the former `reverse = false` output.
 
 ### Tests
 
-- [ ] **T2.4** Unit test — `getCommandExtractFrame()` with FORWARD: no `reverse` and no concat filter present.
-- [ ] **T2.5** Unit test — `getCommandExtractFrame()` with REVERSE: output contains `,reverse` in the filter chain.
-- [ ] **T2.6** Unit test — `getCommandExtractFrame()` with BOOMERANG: output contains the split→reverse→concat segment and maps `[out]` to the BMP output.
-- [ ] **T2.7** Unit test — `getCommandCreatePalette()` is identical across all three loop modes (loop mode does not affect palette command).
-- [ ] **T2.8** Unit test — `getCommandVideoToGif()` is identical across all three loop modes.
-- [ ] **T2.9** Unit test — `getCommandVideoToWebp()` is identical across all three loop modes.
+- [x] **T2.4** Unit test — `getCommandExtractFrame()` with FORWARD: no `reverse` and no concat filter present.
+- [x] **T2.5** Unit test — `getCommandExtractFrame()` with REVERSE: output contains `,reverse` in the filter chain.
+- [x] **T2.6** Unit test — `getCommandExtractFrame()` with BOOMERANG: output contains the split→reverse→concat segment and maps `[out]` to the BMP output.
+- [x] **T2.7** Unit test — `getCommandCreatePalette()` is identical across all three loop modes (loop mode does not affect palette command).
+- [x] **T2.8** Unit test — `getCommandVideoToGif()` is identical across all three loop modes.
+- [x] **T2.9** Unit test — `getCommandVideoToWebp()` is identical across all three loop modes.
 
 ---
 
