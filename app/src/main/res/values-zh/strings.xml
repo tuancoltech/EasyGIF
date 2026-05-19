@@ -96,6 +96,16 @@
   <string name="remove_background">抠图</string>
   <string name="final_pause">结尾停顿</string>
   <string name="color_filter">滤镜</string>
+  <string name="loop_mode">循环方式</string>
+  <string name="loop_mode_forward">正向</string>
+  <string name="loop_mode_reverse">倒放</string>
+  <string name="loop_mode_boomerang">回旋</string>
+  <string name="loop_mode_smart_trim">智能截点</string>
+  <string name="loop_mode_boomerang_size_warning">输出时长将延长约 2 倍</string>
+  <string name="smart_trim_dialog_title">调整截点？</string>
+  <string name="smart_trim_dialog_message">智能截点在 %1$s 处检测到更流畅的循环切点（您的截点：%2$s）。</string>
+  <string name="smart_trim_use_smart">使用智能截点</string>
+  <string name="smart_trim_use_mine">保留我的截点</string>
   <string name="filter_none">原图</string>
   <string name="filter_vintage">复古</string>
   <string name="filter_neon">霓虹</string>

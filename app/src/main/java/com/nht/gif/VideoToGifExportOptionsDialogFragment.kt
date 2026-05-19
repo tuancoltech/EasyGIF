@@ -20,6 +20,10 @@ import androidx.fragment.app.DialogFragment
 import androidx.lifecycle.ViewModelProvider
 import kotlinx.coroutines.launch
 import com.arthenica.ffmpegkit.FFmpegKit
+import android.graphics.drawable.Animatable
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.progressindicator.CircularProgressIndicatorSpec
+import com.google.android.material.progressindicator.IndeterminateDrawable
 import com.nht.gif.model.EstimationState
 import com.nht.gif.model.ExportColorFilter
 import com.nht.gif.model.ExportLoopMode
@@ -48,11 +52,25 @@ import com.nht.gif.toolbox.Toolbox.toast
 import com.nht.gif.toolbox.Toolbox.visibleIf
 import kotlin.math.min
 
+/**
+ * Dialog fragment that presents all export-option controls for the Video-to-GIF pipeline.
+ *
+ * Collects the user's current UI selections and assembles a [TaskBuilderVideoToGif], then hands
+ * it off to [VideoToGifPerformerActivity] to run the FFmpeg encoding pipeline. Heavy state logic
+ * (file-size estimation, filter thumbnail generation, Smart Trim detection) is delegated to
+ * [VideoToGifExportOptionsViewModel].
+ */
 class VideoToGifExportOptionsDialogFragment : DialogFragment() {
+  /** View binding backing field; non-null only between [onCreateView] and [onDestroyView]. */
   private var _binding: DialogFragmentVideoToGifExportOptionsBinding? = null
   private val binding get() = _binding!!
+  /** In-memory cache from export settings to their rendered preview bitmap. Avoids redundant
+   *  FFmpeg decode calls while the user tweaks options in the same session. */
   private val previewBitmapMap = mutableMapOf<TaskBuilderVideoToGifForPreview, Bitmap>()
+  /** Typed shorthand to the host activity, cast once per property access. */
   private val vtgActivity get() = activity as VideoToGifActivity
+  /** Single video frame captured at the current playback position, pre-composited with the text
+   *  overlay and cropped to the user's crop rectangle. Serves as the base for the static preview. */
   private lateinit var frame: Bitmap
   private val viewModel: VideoToGifExportOptionsViewModel by lazy {
     ViewModelProvider(
@@ -66,12 +84,22 @@ class VideoToGifExportOptionsDialogFragment : DialogFragment() {
     )[VideoToGifExportOptionsViewModel::class.java]
   }
 
+  /** RecyclerView adapter for the horizontal colour-filter card list. */
   private lateinit var colorFilterAdapter: ColorFilterAdapter
+  /** RecyclerView adapter for the horizontal loop-mode card list. */
   private lateinit var loopModeAdapter: LoopModeAdapter
 
-  /** Determining whether a Key exists in a Map/Set is fast, while determining whether a file exists is much slower */
+  /** In-memory set of file paths known to exist in the preview cache. A Set lookup is
+   *  significantly faster than a filesystem existence check, so this avoids redundant I/O
+   *  each time the preview pipeline evaluates whether an intermediate output is already cached. */
   private val fileExistsCache = mutableSetOf<String>()
 
+  /**
+   * Inflates the dialog layout, wires all UI controls to the ViewModel, registers state observers,
+   * and renders the initial static preview frame. Dismisses immediately (without returning a usable
+   * view) if the host activity's video player is not yet ready, to avoid a crash on the range-slider
+   * values that are only populated after [VideoToGifActivity.mediaPlayerReady] is called.
+   */
   @SuppressLint("ClickableViewAccessibility")
   override fun onCreateView(
     inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
@@ -91,7 +119,45 @@ class VideoToGifExportOptionsDialogFragment : DialogFragment() {
     vtgActivity.videoView.pause()
     binding.mbSave.onClick {
       vtgActivity.videoView.pause()
-      VideoToGifPerformerActivity.start(vtgActivity, createTaskBuilder())
+      val trimTime = with(vtgActivity.rangeSlider) {
+        if ((values[0] * 100).toInt() == 0 && (values[1] * 100).toInt() == vtgActivity.videoView.duration) null
+        else ((values[0] * 100).toInt() to (values[1] * 100).toInt())
+      }
+      viewModel.requestSave(
+        trimStartMs = trimTime?.first?.toLong() ?: 0L,
+        trimEndMs = trimTime?.second?.toLong(),
+      )
+    }
+    collectOnStarted(viewModel.isDetecting) { detecting ->
+      if (detecting) {
+        val spec = CircularProgressIndicatorSpec(
+          requireContext(), null, 0,
+          com.google.android.material.R.style.Widget_Material3_CircularProgressIndicator_ExtraSmall,
+        )
+        val drawable = IndeterminateDrawable.createCircularDrawable(requireContext(), spec)
+        drawable.start()
+        binding.mbSave.icon = drawable
+        binding.mbSave.isEnabled = false
+      } else {
+        (binding.mbSave.icon as? Animatable)?.stop()
+        binding.mbSave.icon = null
+        binding.mbSave.isEnabled = true
+      }
+    }
+    collectOnStarted(viewModel.smartTrimEvent) { event ->
+      when (event) {
+        is VideoToGifExportOptionsViewModel.SmartTrimEvent.Proceed -> {
+          val taskBuilder = createTaskBuilder()
+          val finalTaskBuilder = event.overrideEndMs?.let { endMs ->
+            taskBuilder.copy(
+              trimTime = taskBuilder.trimTime?.copy(second = endMs.toInt()) ?: (0 to endMs.toInt())
+            )
+          } ?: taskBuilder
+          VideoToGifPerformerActivity.start(vtgActivity, finalTaskBuilder)
+        }
+        is VideoToGifExportOptionsViewModel.SmartTrimEvent.ConfirmSmartTrim ->
+          showSmartTrimDialog(event.originalEndMs, event.detectedEndMs)
+      }
     }
     binding.mbtgOutputFormat.addOnButtonCheckedListener { _, checkedId, isChecked ->
       if (isChecked) {
@@ -318,6 +384,11 @@ class VideoToGifExportOptionsDialogFragment : DialogFragment() {
     return binding.root
   }
 
+  /**
+   * Reads all current UI control values together with the ViewModel state and constructs a
+   * [TaskBuilderVideoToGif] snapshot of the user's export choices. Called immediately before
+   * starting [VideoToGifPerformerActivity] and when rendering the live preview.
+   */
   private fun createTaskBuilder() = with(vtgActivity) {
     TaskBuilderVideoToGif(
       trimTime = with(rangeSlider) {
@@ -366,10 +437,19 @@ class VideoToGifExportOptionsDialogFragment : DialogFragment() {
     )
   }
 
+  /** Runs [produce] exactly once per [key] and records the key in [fileExistsCache]; subsequent
+   *  calls with the same key are no-ops, avoiding redundant FFmpeg executions. */
   private fun ensureCached(key: String, produce: () -> Unit) {
     if (key !in fileExistsCache) { produce(); fileExistsCache += key }
   }
 
+  /**
+   * Produces the static preview bitmap for [taskBuilder] by running the FFmpeg palette pipeline on
+   * the single captured [frame]. Each intermediate output (scaled, colour-keyed, filtered,
+   * palette-generated, palette-applied, and optionally lossy-compressed) is written to the preview
+   * cache and guarded by [ensureCached], so only the stages invalidated by a setting change are
+   * re-executed.
+   */
   private fun renderPreviewImage(taskBuilder: TaskBuilderVideoToGifForPreview): Bitmap = with(taskBuilder) {
     ensureCached(getCache_shortLength()) {
       Bitmap.createScaledBitmap(frame, gifOutputWH(shortLength).first, gifOutputWH(shortLength).second, true)
@@ -413,6 +493,8 @@ class VideoToGifExportOptionsDialogFragment : DialogFragment() {
     previewBitmapMap[this]!!
   }
 
+  /** Rebuilds and displays the preview bitmap from the current UI state, respecting the
+   *  colour-key preview toggle: when the toggle is off, colour-key is excluded from rendering. */
   private fun updatePreviewImage() {
     val taskBuilder = createTaskBuilder().getForPreviewOnly()
     binding.acivSingleFramePreview.setImageBitmap(
@@ -423,8 +505,12 @@ class VideoToGifExportOptionsDialogFragment : DialogFragment() {
     )
   }
 
+  /** Returns the (width, height) of the GIF output at the given short-side [shortLength] in pixels. */
   private fun gifOutputWH(shortLength: Int) = vtgActivity.cropParams.calcScaledResolution(shortLength)
 
+  /** Reads the resolution toggle group and optional custom text field to return the currently
+   *  selected short-side pixel count. The result is clamped to an even number within
+   *  `[2, min(outW, outH)]` to satisfy FFmpeg's scale filter constraints. */
   private fun getSelectedShortLength() =
     when (binding.mbtgResolution.checkedButtonId) {
       binding.mbResolution144p.id -> 144
@@ -456,6 +542,7 @@ class VideoToGifExportOptionsDialogFragment : DialogFragment() {
       if (isGif) "$webpText · ${webpQualityLabel()}" else webpText
   }
 
+  /** Maps the current [WebpQuality] to a human-readable short label used in the size estimate row. */
   private fun webpQualityLabel() = when (viewModel.webpQuality.value) {
     WebpQuality.SMALL -> getString(R.string.low)
     WebpQuality.MEDIUM -> getString(R.string.mid)
@@ -463,6 +550,7 @@ class VideoToGifExportOptionsDialogFragment : DialogFragment() {
     WebpQuality.LOSSLESS -> getString(R.string.best)
   }
 
+  /** Maps the current lossy gifsicle value to a human-readable quality label used in the size estimate row. */
   private fun clarityLabel() = when (viewModel.lossy.value) {
     200 -> getString(R.string.low)
     70 -> getString(R.string.mid)
@@ -471,6 +559,11 @@ class VideoToGifExportOptionsDialogFragment : DialogFragment() {
     else -> getString(R.string.high)
   }
 
+  /**
+   * Persists the current colour-key indicator colour back to the activity for restoration if the
+   * dialog is reopened, then clears all preview bitmaps and cached files. Resumes video playback
+   * only if the activity was fully ready when the dialog opened.
+   */
   override fun onDestroyView() {
     vtgActivity.savedColorKeyColor = binding.viewColorKeyIndicator.backgroundColor
     super.onDestroyView()
@@ -482,13 +575,46 @@ class VideoToGifExportOptionsDialogFragment : DialogFragment() {
     if (vtgActivity.isVideoReady) vtgActivity.videoView.start()
   }
 
+  /** Clears the in-memory bitmap map and file-existence cache, then deletes all files in the
+   *  preview cache directory to reclaim disk space. */
   private fun clearPreviewImageCache() {
     previewBitmapMap.clear()
     fileExistsCache.clear()
     resetDirectory(VIDEO_TO_GIF_PREVIEW_CACHE_DIR)
   }
 
+  /**
+   * Shows a Material alert dialog presenting the Smart Trim detection result. Routes the user's
+   * choice ("Use Smart Trim" / "Use My Trim") back to the ViewModel via
+   * [VideoToGifExportOptionsViewModel.onSmartTrimDialogResult].
+   */
+  private fun showSmartTrimDialog(originalEndMs: Long, detectedEndMs: Long) {
+    MaterialAlertDialogBuilder(requireContext())
+      .setTitle(R.string.smart_trim_dialog_title)
+      .setMessage(getString(
+        R.string.smart_trim_dialog_message,
+        "%.1fs".format(detectedEndMs / 1000f),
+        "%.1fs".format(originalEndMs / 1000f),
+      ))
+      .setPositiveButton(R.string.smart_trim_use_smart) { _, _ ->
+        viewModel.onSmartTrimDialogResult(
+          useSmartTrim = true,
+          originalEndMs = originalEndMs,
+          detectedEndMs = detectedEndMs,
+        )
+      }
+      .setNegativeButton(R.string.smart_trim_use_mine) { _, _ ->
+        viewModel.onSmartTrimDialogResult(
+          useSmartTrim = false,
+          originalEndMs = originalEndMs,
+          detectedEndMs = detectedEndMs,
+        )
+      }
+      .show()
+  }
+
   companion object {
+    /** Stable tag used for [FragmentManager] `findFragmentByTag` / `show` lookups. */
     const val TAG = "VideoToGifExportOptionsDialogFragment"
   }
 }
