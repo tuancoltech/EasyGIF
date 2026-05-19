@@ -2,6 +2,7 @@ package com.nht.gif
 
 import com.nht.gif.MyConstants.ADD_TEXT_RENDER_PNG_PATH
 import com.nht.gif.model.ExportColorFilter
+import com.nht.gif.model.ExportLoopMode
 import com.nht.gif.model.OutputFormat
 import com.nht.gif.model.WebpQuality
 import com.nht.gif.MyConstants.FFMPEG_COMMAND_PREFIX_FOR_ALL_AN
@@ -23,7 +24,8 @@ data class TaskBuilderVideoToGif(
   val outputSpeed: Float,
   val outputFps: Int,
   val colorQuality: Int,
-  val reverse: Boolean,
+  val loopMode: ExportLoopMode = ExportLoopMode.FORWARD,
+  val smartTrim: Boolean = false,
   val textRender: TextRender?,
   val lossy: Int?,
   val videoWH: Pair<Int, Int>,
@@ -65,7 +67,7 @@ data class TaskBuilderVideoToGif(
       "-filter_complex \"[0:v] setpts=PTS/$outputSpeed,fps=fps=$outputFps [0vPreprocessed]; " +
       "[0vPreprocessed][1:v] overlay=0:0," + cropParams.toFFmpegCropCommand() + resolutionParams(
       cropParams, shortLength
-    ) + (colorKey?.let { ",colorkey=#${it.first}:${it.second / 100f}:0" } ?: "") + (",reverse").toEmptyStringIf { !reverse } +
+    ) + (colorKey?.let { ",colorkey=#${it.first}:${it.second / 100f}:0" } ?: "") + (",reverse").toEmptyStringIf { loopMode != ExportLoopMode.REVERSE } +
       "\" \"${MyConstants.VIDEO_TO_GIF_EXTRACTED_FRAMES_PATH}%06d.bmp\""
 
   fun getCommandCreatePalette(): String = buildPaletteCommand(

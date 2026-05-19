@@ -96,9 +96,14 @@
   <string name="estimated_size">Est. Size</string>
   <string name="more_options">More options</string>
   <string name="remove_background">Remove background</string>
-  <string name="reverse">Reverse</string>
   <string name="final_pause">Final pause</string>
   <string name="color_filter">Color filter</string>
+  <string name="loop_mode">Loop mode</string>
+  <string name="loop_mode_forward">Forward</string>
+  <string name="loop_mode_reverse">Reverse</string>
+  <string name="loop_mode_boomerang">Boomerang</string>
+  <string name="loop_mode_smart_trim">Smart trim</string>
+  <string name="loop_mode_boomerang_size_warning">Output duration will be ~2× longer</string>
   <string name="filter_none">None</string>
   <string name="filter_vintage">Vintage</string>
   <string name="filter_neon">Neon</string>
