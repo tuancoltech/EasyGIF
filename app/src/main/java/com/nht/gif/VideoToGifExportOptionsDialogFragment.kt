@@ -297,7 +297,8 @@ class VideoToGifExportOptionsDialogFragment : DialogFragment() {
     collectOnStarted(viewModel.loopMode) { mode ->
       loopModeAdapter.setSelectedMode(mode)
       binding.tvBoomerangSizeWarning.visibleIf { mode == ExportLoopMode.BOOMERANG }
-      binding.rowSmartTrim.visibleIf { mode == ExportLoopMode.REVERSE || mode == ExportLoopMode.BOOMERANG }
+      // Smart Trim temporarily disabled — rowSmartTrim stays gone until the feature is re-enabled
+      // binding.rowSmartTrim.visibleIf { mode == ExportLoopMode.REVERSE || mode == ExportLoopMode.BOOMERANG }
       binding.chipLoopMode.text = when (mode) {
         ExportLoopMode.FORWARD -> getString(R.string.loop_mode)
         ExportLoopMode.REVERSE -> getString(R.string.loop_mode_reverse)
