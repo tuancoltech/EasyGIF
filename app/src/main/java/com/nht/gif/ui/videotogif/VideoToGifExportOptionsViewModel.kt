@@ -145,7 +145,11 @@ class VideoToGifExportOptionsViewModel(
     if (thumbnailJob != null) return
     thumbnailJob = viewModelScope.launch {
       thumbGenerator.generate { filter, bitmap ->
-        val result = if (bitmap != null) Result.success(bitmap) else Result.failure(Exception())
+        val result = if (bitmap != null) {
+          Result.success(bitmap)
+        } else {
+          Result.failure(IllegalStateException("Thumbnail generation returned null bitmap for $filter"))
+        }
         _filterThumbnails.update { it + (filter to result) }
       }
     }
