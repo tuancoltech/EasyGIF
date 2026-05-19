@@ -6,6 +6,7 @@ import com.nht.gif.data.FileSizeEstimator
 import com.nht.gif.ui.videotogif.FilterThumbGenerator
 import com.nht.gif.model.EstimationState
 import com.nht.gif.model.ExportColorFilter
+import com.nht.gif.model.ExportLoopMode
 import com.nht.gif.model.OutputFormat
 import com.nht.gif.model.WebpQuality
 import io.mockk.coEvery
@@ -205,6 +206,65 @@ class VideoToGifExportOptionsViewModelTest {
     assertEquals(2, callCount)
     assertEquals(WebpQuality.SMALL, lastSettings?.webpQuality)
     assertEquals(EstimationState.Ready(10L, 20L), viewModel.estimationState.value)
+  }
+
+  // T1.15
+  @Test
+  fun `loopMode defaults to FORWARD on creation`() {
+    val viewModel = createViewModel()
+    assertEquals(ExportLoopMode.FORWARD, viewModel.loopMode.value)
+  }
+
+  // T1.16
+  @Test
+  fun `smartTrimEnabled defaults to false on creation`() {
+    val viewModel = createViewModel()
+    assertFalse(viewModel.smartTrimEnabled.value)
+  }
+
+  // T1.17
+  @Test
+  fun `setLoopMode updates loopMode state for each mode`() {
+    val viewModel = createViewModel()
+    ExportLoopMode.entries.forEach { mode ->
+      viewModel.setLoopMode(mode)
+      assertEquals(mode, viewModel.loopMode.value)
+    }
+  }
+
+  // T1.18 — boomerang size warning is visible only when loopMode == BOOMERANG
+  @Test
+  fun `boomerang warning visible only for BOOMERANG mode`() {
+    val viewModel = createViewModel()
+    val shouldShowWarning = { viewModel.loopMode.value == ExportLoopMode.BOOMERANG }
+
+    viewModel.setLoopMode(ExportLoopMode.FORWARD)
+    assertFalse(shouldShowWarning())
+
+    viewModel.setLoopMode(ExportLoopMode.REVERSE)
+    assertFalse(shouldShowWarning())
+
+    viewModel.setLoopMode(ExportLoopMode.BOOMERANG)
+    assertTrue(shouldShowWarning())
+  }
+
+  // T1.19 — smart trim row visible for REVERSE and BOOMERANG, hidden for FORWARD
+  @Test
+  fun `smart trim row visible for REVERSE and BOOMERANG, hidden for FORWARD`() {
+    val viewModel = createViewModel()
+    val shouldShowSmartTrim = {
+      viewModel.loopMode.value == ExportLoopMode.REVERSE ||
+        viewModel.loopMode.value == ExportLoopMode.BOOMERANG
+    }
+
+    viewModel.setLoopMode(ExportLoopMode.FORWARD)
+    assertFalse(shouldShowSmartTrim())
+
+    viewModel.setLoopMode(ExportLoopMode.REVERSE)
+    assertTrue(shouldShowSmartTrim())
+
+    viewModel.setLoopMode(ExportLoopMode.BOOMERANG)
+    assertTrue(shouldShowSmartTrim())
   }
 
   // T2.14

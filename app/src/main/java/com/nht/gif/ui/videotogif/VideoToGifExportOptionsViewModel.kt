@@ -11,6 +11,7 @@ import com.nht.gif.data.FileSizeEstimator
 import com.nht.gif.data.FileSizeEstimatorImpl
 import com.nht.gif.model.EstimationState
 import com.nht.gif.model.ExportColorFilter
+import com.nht.gif.model.ExportLoopMode
 import com.nht.gif.model.OutputFormat
 import com.nht.gif.model.WebpQuality
 import kotlinx.coroutines.CancellationException
@@ -58,6 +59,12 @@ class VideoToGifExportOptionsViewModel(
   private val _colorFilter = MutableStateFlow(ExportColorFilter.NONE)
   val colorFilter: StateFlow<ExportColorFilter> = _colorFilter.asStateFlow()
 
+  private val _loopMode = MutableStateFlow(ExportLoopMode.FORWARD)
+  val loopMode: StateFlow<ExportLoopMode> = _loopMode.asStateFlow()
+
+  private val _smartTrimEnabled = MutableStateFlow(false)
+  val smartTrimEnabled: StateFlow<Boolean> = _smartTrimEnabled.asStateFlow()
+
   private val _filterThumbnails = MutableStateFlow<Map<ExportColorFilter, Result<Bitmap>?>>(
     ExportColorFilter.entries.associateWith { null }
   )
@@ -97,6 +104,10 @@ class VideoToGifExportOptionsViewModel(
   fun setLossy(lossy: Int?) { _lossy.value = lossy }
 
   fun setColorFilter(filter: ExportColorFilter) { _colorFilter.value = filter }
+
+  fun setLoopMode(mode: ExportLoopMode) { _loopMode.value = mode }
+
+  fun setSmartTrimEnabled(enabled: Boolean) { _smartTrimEnabled.value = enabled }
 
   fun loadThumbnails() {
     if (thumbnailJob != null) return

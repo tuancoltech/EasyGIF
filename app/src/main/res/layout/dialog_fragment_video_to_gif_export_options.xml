@@ -459,11 +459,6 @@
                 android:text="@string/frame_rate" />
 
               <com.google.android.material.chip.Chip
-                android:id="@+id/chipEnableReverse"
-                style="@style/Theme.EasyGif.Chip"
-                android:text="@string/reverse" />
-
-              <com.google.android.material.chip.Chip
                 android:id="@+id/chipEnableFinalDelay"
                 style="@style/Theme.EasyGif.Chip"
                 android:text="@string/final_pause" />
@@ -472,6 +467,11 @@
                 android:id="@+id/chipColorFilter"
                 style="@style/Theme.EasyGif.Chip"
                 android:text="@string/color_filter" />
+
+              <com.google.android.material.chip.Chip
+                android:id="@+id/chipLoopMode"
+                style="@style/Theme.EasyGif.Chip"
+                android:text="@string/loop_mode" />
             </com.google.android.material.chip.ChipGroup>
           </HorizontalScrollView>
 
@@ -740,6 +740,97 @@
           app:layout_constraintEnd_toEndOf="parent"
           app:layout_constraintStart_toStartOf="parent"
           app:layout_constraintTop_toBottomOf="@id/rvColorFilterOptions" />
+
+      </androidx.constraintlayout.widget.ConstraintLayout>
+
+      <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/llcGroupLoopMode"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:visibility="gone"
+        tools:visibility="visible">
+
+        <com.google.android.material.textview.MaterialTextView
+          android:id="@+id/mtvLoopModeLabel"
+          android:layout_width="0dp"
+          android:layout_height="wrap_content"
+          android:layout_marginStart="24dp"
+          android:text="@string/loop_mode"
+          android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
+          app:layout_constraintBottom_toBottomOf="@id/rvLoopModeOptions"
+          app:layout_constraintEnd_toStartOf="@id/rvLoopModeOptions"
+          app:layout_constraintHorizontal_chainStyle="spread"
+          app:layout_constraintHorizontal_weight="2"
+          app:layout_constraintStart_toStartOf="parent"
+          app:layout_constraintTop_toTopOf="@id/rvLoopModeOptions"
+          app:layout_constraintVertical_bias="0.5" />
+
+        <androidx.recyclerview.widget.RecyclerView
+          android:id="@+id/rvLoopModeOptions"
+          android:layout_width="0dp"
+          android:layout_height="wrap_content"
+          android:layout_marginEnd="24dp"
+          android:clipToPadding="false"
+          android:orientation="horizontal"
+          android:paddingVertical="8dp"
+          app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+          app:layout_constraintEnd_toEndOf="parent"
+          app:layout_constraintHorizontal_weight="5"
+          app:layout_constraintStart_toEndOf="@id/mtvLoopModeLabel"
+          app:layout_constraintTop_toTopOf="parent" />
+
+        <com.google.android.material.textview.MaterialTextView
+          android:id="@+id/tvBoomerangSizeWarning"
+          android:layout_width="0dp"
+          android:layout_height="wrap_content"
+          android:layout_marginEnd="24dp"
+          android:layout_marginBottom="4dp"
+          android:text="@string/loop_mode_boomerang_size_warning"
+          android:textAppearance="@style/TextAppearance.Material3.LabelSmall"
+          android:visibility="gone"
+          app:layout_constraintEnd_toEndOf="parent"
+          app:layout_constraintStart_toStartOf="@id/rvLoopModeOptions"
+          app:layout_constraintTop_toBottomOf="@id/rvLoopModeOptions" />
+
+        <com.google.android.material.textview.MaterialTextView
+          android:id="@+id/mtvSmartTrimLabel"
+          android:layout_width="0dp"
+          android:layout_height="wrap_content"
+          android:layout_marginEnd="8dp"
+          android:layout_marginBottom="8dp"
+          android:text="@string/loop_mode_smart_trim"
+          android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
+          app:layout_constraintBottom_toBottomOf="@id/switchSmartTrim"
+          app:layout_constraintEnd_toStartOf="@id/switchSmartTrim"
+          app:layout_constraintStart_toStartOf="@id/rvLoopModeOptions"
+          app:layout_constraintTop_toBottomOf="@id/tvBoomerangSizeWarning"
+          app:layout_constraintVertical_bias="0.5" />
+
+        <androidx.appcompat.widget.SwitchCompat
+          android:id="@+id/switchSmartTrim"
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:layout_marginEnd="24dp"
+          android:layout_marginBottom="8dp"
+          app:layout_constraintEnd_toEndOf="parent"
+          app:layout_constraintTop_toBottomOf="@id/tvBoomerangSizeWarning" />
+
+        <androidx.constraintlayout.widget.Group
+          android:id="@+id/rowSmartTrim"
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:visibility="gone"
+          app:constraint_referenced_ids="mtvSmartTrimLabel,switchSmartTrim" />
+
+        <View
+          android:id="@+id/vDividerLoopMode"
+          android:layout_width="0dp"
+          android:layout_height="@dimen/divider_thickness"
+          android:background="@color/divider"
+          app:layout_constraintBottom_toBottomOf="parent"
+          app:layout_constraintEnd_toEndOf="parent"
+          app:layout_constraintStart_toStartOf="parent"
+          app:layout_constraintTop_toBottomOf="@id/switchSmartTrim" />
 
       </androidx.constraintlayout.widget.ConstraintLayout>
       <!--以上菜单按需显示-->

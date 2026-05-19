@@ -17,18 +17,19 @@ import androidx.core.graphics.get
 import androidx.core.widget.TextViewCompat
 import androidx.core.widget.doAfterTextChanged
 import androidx.fragment.app.DialogFragment
-import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.lifecycleScope
-import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.launch
 import com.arthenica.ffmpegkit.FFmpegKit
 import com.nht.gif.model.EstimationState
 import com.nht.gif.model.ExportColorFilter
+import com.nht.gif.model.ExportLoopMode
 import com.nht.gif.model.OutputFormat
 import com.nht.gif.model.WebpQuality
 import com.nht.gif.model.formatEstimatedSize
+import com.nht.gif.toolbox.collectOnStarted
+import com.nht.gif.toolbox.launchOnStarted
 import com.nht.gif.ui.videotogif.ColorFilterAdapter
+import com.nht.gif.ui.videotogif.LoopModeAdapter
 import com.nht.gif.ui.videotogif.VideoToGifExportOptionsViewModel
 import com.nht.gif.MyConstants.FFMPEG_COMMAND_PREFIX_FOR_ALL_AN
 import com.nht.gif.MyConstants.VIDEO_TO_GIF_PREVIEW_CACHE_DIR
@@ -66,6 +67,7 @@ class VideoToGifExportOptionsDialogFragment : DialogFragment() {
   }
 
   private lateinit var colorFilterAdapter: ColorFilterAdapter
+  private lateinit var loopModeAdapter: LoopModeAdapter
 
   /** Determining whether a Key exists in a Map/Set is fast, while determining whether a file exists is much slower */
   private val fileExistsCache = mutableSetOf<String>()
@@ -97,54 +99,52 @@ class VideoToGifExportOptionsDialogFragment : DialogFragment() {
         viewModel.setOutputFormat(format)
       }
     }
-    viewLifecycleOwner.lifecycleScope.launch {
-      viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-        launch {
-          viewModel.outputFormat.collect { format ->
-            val isGif = format == OutputFormat.GIF
-            binding.llcRowGifImageQuality.visibleIf { isGif }
-            binding.dividerGifControls.root.visibleIf { isGif }
-            binding.llcRowGifColorQuality.visibleIf { isGif }
-            binding.chipEnableFinalDelay.visibleIf { isGif }
-            binding.llcWebpQualitySection.visibleIf { !isGif }
-            val activeColor = ContextCompat.getColor(requireContext(), R.color.green_dark)
-            val inactiveColor = ContextCompat.getColor(requireContext(), R.color.grey)
-            TextViewCompat.setTextAppearance(binding.mtvEstimatedGifSize,
-              if (isGif) R.style.TextAppearance_App_EstSize_Active
-              else R.style.TextAppearance_App_EstSize_Inactive)
-            binding.mtvEstimatedGifSize.setTextColor(if (isGif) activeColor else inactiveColor)
-            TextViewCompat.setTextAppearance(binding.mtvEstimatedWebpSize,
-              if (isGif) R.style.TextAppearance_App_EstSize_Inactive
-              else R.style.TextAppearance_App_EstSize_Active)
-            binding.mtvEstimatedWebpSize.setTextColor(if (isGif) inactiveColor else activeColor)
+    launchOnStarted {
+      launch {
+        viewModel.outputFormat.collect { format ->
+          val isGif = format == OutputFormat.GIF
+          binding.llcRowGifImageQuality.visibleIf { isGif }
+          binding.dividerGifControls.root.visibleIf { isGif }
+          binding.llcRowGifColorQuality.visibleIf { isGif }
+          binding.chipEnableFinalDelay.visibleIf { isGif }
+          binding.llcWebpQualitySection.visibleIf { !isGif }
+          val activeColor = ContextCompat.getColor(requireContext(), R.color.green_dark)
+          val inactiveColor = ContextCompat.getColor(requireContext(), R.color.grey)
+          TextViewCompat.setTextAppearance(binding.mtvEstimatedGifSize,
+            if (isGif) R.style.TextAppearance_App_EstSize_Active
+            else R.style.TextAppearance_App_EstSize_Inactive)
+          binding.mtvEstimatedGifSize.setTextColor(if (isGif) activeColor else inactiveColor)
+          TextViewCompat.setTextAppearance(binding.mtvEstimatedWebpSize,
+            if (isGif) R.style.TextAppearance_App_EstSize_Inactive
+            else R.style.TextAppearance_App_EstSize_Active)
+          binding.mtvEstimatedWebpSize.setTextColor(if (isGif) inactiveColor else activeColor)
+        }
+      }
+      launch {
+        viewModel.webpQuality.collect { quality ->
+          val targetId = when (quality) {
+            WebpQuality.SMALL -> binding.mbWebpQualitySmall.id
+            WebpQuality.MEDIUM -> binding.mbWebpQualityMedium.id
+            WebpQuality.HIGH -> binding.mbWebpQualityHigh.id
+            WebpQuality.LOSSLESS -> binding.mbWebpQualityLossless.id
+          }
+          if (binding.mbtgWebpQuality.checkedButtonId != targetId) {
+            binding.mbtgWebpQuality.check(targetId)
           }
         }
-        launch {
-          viewModel.webpQuality.collect { quality ->
-            val targetId = when (quality) {
-              WebpQuality.SMALL -> binding.mbWebpQualitySmall.id
-              WebpQuality.MEDIUM -> binding.mbWebpQualityMedium.id
-              WebpQuality.HIGH -> binding.mbWebpQualityHigh.id
-              WebpQuality.LOSSLESS -> binding.mbWebpQualityLossless.id
-            }
-            if (binding.mbtgWebpQuality.checkedButtonId != targetId) {
-              binding.mbtgWebpQuality.check(targetId)
-            }
-          }
+      }
+      launch {
+        viewModel.showLosslessWarning.collect { show ->
+          binding.mtvLosslessWarning.visibleIf { show }
         }
-        launch {
-          viewModel.showLosslessWarning.collect { show ->
-            binding.mtvLosslessWarning.visibleIf { show }
-          }
-        }
-        launch {
-          viewModel.estimationState.collect { state ->
-            val isLoading = state is EstimationState.Loading
-            binding.cpiEstimation.visibleIf { isLoading }
-            binding.mtvEstimatedGifSize.visibleIf { !isLoading }
-            binding.mtvEstimatedWebpSize.visibleIf { !isLoading }
-            if (!isLoading) updateSizeText(state)
-          }
+      }
+      launch {
+        viewModel.estimationState.collect { state ->
+          val isLoading = state is EstimationState.Loading
+          binding.cpiEstimation.visibleIf { isLoading }
+          binding.mtvEstimatedGifSize.visibleIf { !isLoading }
+          binding.mtvEstimatedWebpSize.visibleIf { !isLoading }
+          if (!isLoading) updateSizeText(state)
         }
       }
     }
@@ -162,7 +162,7 @@ class VideoToGifExportOptionsDialogFragment : DialogFragment() {
     }
     binding.chipGroupMoreOptions.setOnCheckedStateChangeListener { _, checkedIds ->
       val chipEffectNeedsToBeViewedAfterExporting = listOf(
-        binding.chipFramerate, binding.chipEnableReverse, binding.chipEnableFinalDelay
+        binding.chipFramerate, binding.chipEnableFinalDelay
       )
       val checkedChips = chipEffectNeedsToBeViewedAfterExporting.filter { checkedIds.contains(it.id) }
       if (checkedChips.isEmpty()) {
@@ -203,28 +203,38 @@ class VideoToGifExportOptionsDialogFragment : DialogFragment() {
       binding.llcGroupColorFilter.visibleIf { isChecked }
       if (isChecked) viewModel.loadThumbnails()
     }
+    binding.chipLoopMode.setOnCheckedChangeListener { _, isChecked ->
+      binding.llcGroupLoopMode.visibleIf { isChecked }
+    }
+    loopModeAdapter = LoopModeAdapter { mode -> viewModel.setLoopMode(mode) }
+    binding.rvLoopModeOptions.adapter = loopModeAdapter
     colorFilterAdapter = ColorFilterAdapter { filter -> viewModel.setColorFilter(filter) }
     binding.rvColorFilterOptions.adapter = colorFilterAdapter
-    viewLifecycleOwner.lifecycleScope.launch {
-      viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-        viewModel.colorFilter.collect { filter ->
-          colorFilterAdapter.setSelectedFilter(filter)
-          binding.chipColorFilter.text = when (filter) {
-            ExportColorFilter.NONE -> getString(R.string.color_filter)
-            ExportColorFilter.VINTAGE -> getString(R.string.filter_vintage)
-            ExportColorFilter.NEON -> getString(R.string.filter_neon)
-            ExportColorFilter.NOIR -> getString(R.string.filter_noir)
-          }
-          updatePreviewImage()
-        }
+    collectOnStarted(viewModel.colorFilter) { filter ->
+      colorFilterAdapter.setSelectedFilter(filter)
+      binding.chipColorFilter.text = when (filter) {
+        ExportColorFilter.NONE -> getString(R.string.color_filter)
+        ExportColorFilter.VINTAGE -> getString(R.string.filter_vintage)
+        ExportColorFilter.NEON -> getString(R.string.filter_neon)
+        ExportColorFilter.NOIR -> getString(R.string.filter_noir)
+      }
+      updatePreviewImage()
+    }
+    collectOnStarted(viewModel.filterThumbnails) { thumbnails ->
+      colorFilterAdapter.updateThumbnails(thumbnails)
+    }
+    collectOnStarted(viewModel.loopMode) { mode ->
+      loopModeAdapter.setSelectedMode(mode)
+      binding.tvBoomerangSizeWarning.visibleIf { mode == ExportLoopMode.BOOMERANG }
+      binding.rowSmartTrim.visibleIf { mode == ExportLoopMode.REVERSE || mode == ExportLoopMode.BOOMERANG }
+      binding.chipLoopMode.text = when (mode) {
+        ExportLoopMode.FORWARD -> getString(R.string.loop_mode)
+        ExportLoopMode.REVERSE -> getString(R.string.loop_mode_reverse)
+        ExportLoopMode.BOOMERANG -> getString(R.string.loop_mode_boomerang)
       }
     }
-    viewLifecycleOwner.lifecycleScope.launch {
-      viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-        viewModel.filterThumbnails.collect { thumbnails ->
-          colorFilterAdapter.updateThumbnails(thumbnails)
-        }
-      }
+    binding.switchSmartTrim.setOnCheckedChangeListener { _, isChecked ->
+      viewModel.setSmartTrimEnabled(isChecked)
     }
     binding.viewColorKeyIndicator.onClick { toast(R.string.click_on_the_preview_image_to_pick_an_color) }
     binding.sliderColorKeySimilarity.apply {
@@ -333,7 +343,7 @@ class VideoToGifExportOptionsDialogFragment : DialogFragment() {
         binding.mbColorQualityMax.id -> 256
         else -> throw IllegalArgumentException()
       },
-      reverse = binding.chipEnableReverse.isChecked,
+      loopMode = viewModel.loopMode.value,
       textRender = textRender,
       lossy = when (binding.mbtgImageQuality.checkedButtonId) {
         binding.mbImageQualityLow.id -> 200
