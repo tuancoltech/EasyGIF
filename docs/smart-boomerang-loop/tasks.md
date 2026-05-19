@@ -81,28 +81,28 @@ All loop mode logic lives in `getCommandExtractFrame()`. `getCommandCreatePalett
 ## US-3 — Smart Trim Detection
 
 **Spec ref:** [spec.md § US-3](spec.md#us-3--smart-trim-detection)
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
 ### Core Logic
 
-- [ ] **T3.1** Implement `SmartTrimDetector` / `SmartTrimDetectorImpl`: extracts downscaled (64×64 grayscale) thumbnails at sampled frame rate (clips ≤10s → `fps=10`; clips >10s → `fps=5`) via FFmpeg on `Dispatchers.IO`.
-- [ ] **T3.2** Compute normalized histogram correlation between the first thumbnail and each subsequent thumbnail using `withContext(Dispatchers.Default)`; return the timestamp (ms) of the highest-scoring frame if above threshold (0.85), or `null` if none qualify.
-- [ ] **T3.3** Delete all extracted temp thumbnails after detection completes, returns null, or throws.
+- [x] **T3.1** Implement `SmartTrimDetector` / `SmartTrimDetectorImpl`: extracts downscaled (64×64 grayscale) thumbnails at sampled frame rate (clips ≤10s → `fps=10`; clips >10s → `fps=5`) via FFmpeg on `Dispatchers.IO`.
+- [x] **T3.2** Compute normalized histogram correlation between the first thumbnail and each subsequent thumbnail using `withContext(Dispatchers.Default)`; return the timestamp (ms) of the highest-scoring frame if above threshold (0.85), or `null` if none qualify.
+- [x] **T3.3** Delete all extracted temp thumbnails after detection completes, returns null, or throws.
 
 ### Export Flow
 
-- [ ] **T3.4** When the user taps "Save" with `smartTrimEnabled == true` and `loopMode != FORWARD`, run `SmartTrimDetector` before launching the encoding pipeline.
-- [ ] **T3.5** If detection returns a candidate timestamp, show the Smart Trim Confirmation Dialog (spec §5.2). On **Use Smart Trim**, update `TaskBuilderVideoToGif.endMs` with the detected value. On **Use My Trim**, leave `endMs` unchanged.
-- [ ] **T3.6** If detection returns `null` or throws, proceed with the user's original `endMs` silently — no dialog, no error shown.
+- [x] **T3.4** When the user taps "Save" with `smartTrimEnabled == true` and `loopMode != FORWARD`, run `SmartTrimDetector` before launching the encoding pipeline.
+- [x] **T3.5** If detection returns a candidate timestamp, show the Smart Trim Confirmation Dialog (spec §5.2). On **Use Smart Trim**, update `TaskBuilderVideoToGif.endMs` with the detected value. On **Use My Trim**, leave `endMs` unchanged.
+- [x] **T3.6** If detection returns `null` or throws, proceed with the user's original `endMs` silently — no dialog, no error shown.
 
 ### Tests
 
-- [ ] **T3.7** Unit test — `SmartTrimDetector` returns `null` when no frame exceeds the similarity threshold.
-- [ ] **T3.8** Unit test — `SmartTrimDetector` returns the correct timestamp when a high-similarity frame is present.
-- [ ] **T3.9** Unit test — histogram correlation runs on `Dispatchers.Default`, not `Dispatchers.IO`.
-- [ ] **T3.10** Unit test — temp thumbnails are deleted after detection completes (success path).
-- [ ] **T3.11** Unit test — temp thumbnails are deleted when detection throws.
-- [ ] **T3.12** Unit test — when `smartTrimEnabled == false`, `SmartTrimDetector` is never invoked.
-- [ ] **T3.13** Unit test — when detection returns `null`, `TaskBuilderVideoToGif.endMs` is unchanged.
-- [ ] **T3.14** Unit test — when the user selects "Use My Trim" in the dialog, `TaskBuilderVideoToGif.endMs` is unchanged.
-- [ ] **T3.15** Unit test — when the user selects "Use Smart Trim" in the dialog, `TaskBuilderVideoToGif.endMs` equals the detected timestamp.
+- [x] **T3.7** Unit test — `SmartTrimDetector` returns `null` when no frame exceeds the similarity threshold.
+- [x] **T3.8** Unit test — `SmartTrimDetector` returns the correct timestamp when a high-similarity frame is present.
+- [x] **T3.9** Unit test — histogram correlation runs on `Dispatchers.Default`, not `Dispatchers.IO`.
+- [x] **T3.10** Unit test — temp thumbnails are deleted after detection completes (success path).
+- [x] **T3.11** Unit test — temp thumbnails are deleted when detection throws.
+- [x] **T3.12** Unit test — when `smartTrimEnabled == false`, `SmartTrimDetector` is never invoked.
+- [x] **T3.13** Unit test — when detection returns `null`, `TaskBuilderVideoToGif.endMs` is unchanged.
+- [x] **T3.14** Unit test — when the user selects "Use My Trim" in the dialog, `TaskBuilderVideoToGif.endMs` is unchanged.
+- [x] **T3.15** Unit test — when the user selects "Use Smart Trim" in the dialog, `TaskBuilderVideoToGif.endMs` equals the detected timestamp.

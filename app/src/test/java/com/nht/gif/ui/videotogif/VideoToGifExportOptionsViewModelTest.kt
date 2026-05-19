@@ -4,6 +4,7 @@ import com.nht.gif.CropParams
 import com.nht.gif.data.EstimationSettings
 import com.nht.gif.data.FileSizeEstimator
 import com.nht.gif.ui.videotogif.FilterThumbGenerator
+import com.nht.gif.ui.videotogif.SmartTrimDetector
 import com.nht.gif.model.EstimationState
 import com.nht.gif.model.ExportColorFilter
 import com.nht.gif.model.ExportLoopMode
@@ -12,8 +13,10 @@ import com.nht.gif.model.WebpQuality
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
+import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
@@ -49,6 +52,7 @@ class VideoToGifExportOptionsViewModelTest {
   private fun createViewModel(
     estimator: FileSizeEstimator = mockEstimator,
     thumbGenerator: FilterThumbGenerator = mockThumbGenerator,
+    smartTrimDetectorFactory: (Long, Long) -> SmartTrimDetector = { _, _ -> mockk(relaxed = true) },
   ) = VideoToGifExportOptionsViewModel(
     inputVideoPath = "/data/test.mp4",
     duration = 5000,
@@ -56,6 +60,7 @@ class VideoToGifExportOptionsViewModelTest {
     outputSpeed = 1f,
     estimator = estimator,
     thumbGenerator = thumbGenerator,
+    smartTrimDetectorFactory = smartTrimDetectorFactory,
   )
 
   // T1.8
@@ -266,6 +271,83 @@ class VideoToGifExportOptionsViewModelTest {
     viewModel.setLoopMode(ExportLoopMode.BOOMERANG)
     assertTrue(shouldShowSmartTrim())
   }
+
+  // T3.12 — SmartTrimDetector must not be invoked when smartTrimEnabled is false
+  @Test
+  fun `requestSave never invokes SmartTrimDetector when smartTrimEnabled is false`() =
+    runTest(testDispatcher) {
+      var factoryCalled = false
+      val viewModel = createViewModel(
+        smartTrimDetectorFactory = { _, _ -> factoryCalled = true; mockk(relaxed = true) },
+      )
+      viewModel.setLoopMode(ExportLoopMode.REVERSE) // would trigger detection if enabled
+      // smartTrimEnabled defaults to false — deliberately not calling setSmartTrimEnabled(true)
+
+      viewModel.requestSave(trimStartMs = 0L, trimEndMs = 5000L)
+      advanceUntilIdle()
+
+      assertFalse("factory must not be called when smartTrimEnabled is false", factoryCalled)
+    }
+
+  // T3.13 — null detection result means endMs override is not applied
+  @Test
+  fun `requestSave emits Proceed with null overrideEndMs when detection returns null`() =
+    runTest(testDispatcher) {
+      val mockDetector = mockk<SmartTrimDetector>()
+      coEvery { mockDetector.detect() } returns null
+      val viewModel = createViewModel(smartTrimDetectorFactory = { _, _ -> mockDetector })
+      viewModel.setLoopMode(ExportLoopMode.REVERSE)
+      viewModel.setSmartTrimEnabled(true)
+
+      val eventJob = async { viewModel.smartTrimEvent.first() }
+      viewModel.requestSave(trimStartMs = 0L, trimEndMs = 5000L)
+      advanceUntilIdle()
+
+      assertEquals(
+        VideoToGifExportOptionsViewModel.SmartTrimEvent.Proceed(overrideEndMs = null),
+        eventJob.await(),
+      )
+    }
+
+  // T3.14 — "Use My Trim" keeps the user's original end time unchanged
+  @Test
+  fun `onSmartTrimDialogResult with useSmartTrim=false emits Proceed with null overrideEndMs`() =
+    runTest(testDispatcher) {
+      val viewModel = createViewModel()
+
+      val eventJob = async { viewModel.smartTrimEvent.first() }
+      viewModel.onSmartTrimDialogResult(
+        useSmartTrim = false,
+        originalEndMs = 5000L,
+        detectedEndMs = 3000L,
+      )
+      advanceUntilIdle()
+
+      assertEquals(
+        VideoToGifExportOptionsViewModel.SmartTrimEvent.Proceed(overrideEndMs = null),
+        eventJob.await(),
+      )
+    }
+
+  // T3.15 — "Use Smart Trim" overrides endMs with the detected value
+  @Test
+  fun `onSmartTrimDialogResult with useSmartTrim=true emits Proceed with detected endMs`() =
+    runTest(testDispatcher) {
+      val viewModel = createViewModel()
+
+      val eventJob = async { viewModel.smartTrimEvent.first() }
+      viewModel.onSmartTrimDialogResult(
+        useSmartTrim = true,
+        originalEndMs = 5000L,
+        detectedEndMs = 3000L,
+      )
+      advanceUntilIdle()
+
+      assertEquals(
+        VideoToGifExportOptionsViewModel.SmartTrimEvent.Proceed(overrideEndMs = 3000L),
+        eventJob.await(),
+      )
+    }
 
   // T2.14
   @Test

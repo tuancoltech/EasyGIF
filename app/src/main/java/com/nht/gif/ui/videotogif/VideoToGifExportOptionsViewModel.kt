@@ -16,11 +16,14 @@ import com.nht.gif.model.OutputFormat
 import com.nht.gif.model.WebpQuality
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -32,7 +35,26 @@ class VideoToGifExportOptionsViewModel(
   private val outputSpeed: Float,
   private val estimator: FileSizeEstimator,
   private val thumbGenerator: FilterThumbGenerator,
+  private val smartTrimDetectorFactory: (startMs: Long, endMs: Long) -> SmartTrimDetector,
 ) : ViewModel() {
+
+  /**
+   * One-shot events that drive the Save / Smart Trim flow.
+   * The Fragment collects this flow to decide whether to proceed or show the confirmation dialog.
+   */
+  sealed class SmartTrimEvent {
+    /**
+     * Proceed to export. [overrideEndMs] is non-null when Smart Trim detected a better end point
+     * and the user accepted it; null means use the current UI trim state unchanged.
+     */
+    data class Proceed(val overrideEndMs: Long?) : SmartTrimEvent()
+
+    /**
+     * Smart Trim found a candidate end point. The Fragment must show the confirmation dialog
+     * and call [onSmartTrimDialogResult] with the user's choice.
+     */
+    data class ConfirmSmartTrim(val originalEndMs: Long, val detectedEndMs: Long) : SmartTrimEvent()
+  }
 
   private val _outputFormat = MutableStateFlow(OutputFormat.GIF)
   val outputFormat: StateFlow<OutputFormat> = _outputFormat.asStateFlow()
@@ -72,6 +94,16 @@ class VideoToGifExportOptionsViewModel(
 
   private val _estimationState = MutableStateFlow<EstimationState>(EstimationState.Loading)
   val estimationState: StateFlow<EstimationState> = _estimationState.asStateFlow()
+
+  private val _isDetecting = MutableStateFlow(false)
+
+  /** True while Smart Trim detection is running; drives the Save button loading state in the UI. */
+  val isDetecting: StateFlow<Boolean> = _isDetecting.asStateFlow()
+
+  private val _smartTrimEvent = Channel<SmartTrimEvent>(Channel.BUFFERED)
+
+  /** One-shot events for the Save / Smart Trim flow. Collected by the Fragment. */
+  val smartTrimEvent: Flow<SmartTrimEvent> = _smartTrimEvent.receiveAsFlow()
 
   private var estimationJob: Job? = null
   private var thumbnailJob: Job? = null
@@ -148,6 +180,50 @@ class VideoToGifExportOptionsViewModel(
     lossy = lossy.value,
   )
 
+  /**
+   * Initiates the Save flow. When Smart Trim is enabled and [loopMode] is not FORWARD,
+   * runs detection before emitting a [SmartTrimEvent]. Otherwise emits [SmartTrimEvent.Proceed]
+   * immediately. Any exception from the detector is silently swallowed (T3.6).
+   *
+   * @param trimStartMs Start of the user's trim in milliseconds (0 if no trim start is set).
+   * @param trimEndMs End of the user's trim in milliseconds, or null if no trim end is set.
+   */
+  fun requestSave(trimStartMs: Long, trimEndMs: Long?) {
+    viewModelScope.launch {
+      if (!smartTrimEnabled.value || loopMode.value == ExportLoopMode.FORWARD) {
+        _smartTrimEvent.send(SmartTrimEvent.Proceed(overrideEndMs = null))
+        return@launch
+      }
+      val endMs = trimEndMs ?: duration.toLong()
+      _isDetecting.value = true
+      val detectedMs: Long? = try {
+        smartTrimDetectorFactory(trimStartMs, endMs).detect()
+      } catch (_: Exception) {
+        null
+      } finally {
+        _isDetecting.value = false
+      }
+      if (detectedMs != null) {
+        _smartTrimEvent.send(SmartTrimEvent.ConfirmSmartTrim(originalEndMs = endMs, detectedEndMs = detectedMs))
+      } else {
+        _smartTrimEvent.send(SmartTrimEvent.Proceed(overrideEndMs = null))
+      }
+    }
+  }
+
+  /**
+   * Responds to the Smart Trim confirmation dialog. Emits [SmartTrimEvent.Proceed] with
+   * [detectedEndMs] if the user accepted, or null (keep UI trim state) if the user declined.
+   *
+   * @param useSmartTrim true if the user tapped "Use Smart Trim"; false for "Use My Trim".
+   * @param originalEndMs The user's original trim end time (unused when [useSmartTrim] is false,
+   *   kept as a parameter so call sites are explicit about which value they chose).
+   * @param detectedEndMs The end time proposed by Smart Trim.
+   */
+  fun onSmartTrimDialogResult(useSmartTrim: Boolean, originalEndMs: Long, detectedEndMs: Long) {
+    _smartTrimEvent.trySend(SmartTrimEvent.Proceed(overrideEndMs = if (useSmartTrim) detectedEndMs else null))
+  }
+
   override fun onCleared() {
     super.onCleared()
     estimationJob?.cancel()
@@ -167,11 +243,20 @@ class VideoToGifExportOptionsViewModel(
         clipDurationMs = duration.toLong(),
         tempBaseDir = MyConstants.CACHE_DIR_PATH,
       ),
+      smartTrimDetectorFactory: (Long, Long) -> SmartTrimDetector = { startMs, endMs ->
+        SmartTrimDetectorImpl(
+          inputVideoPath = inputVideoPath,
+          startMs = startMs,
+          endMs = endMs,
+          tempBaseDir = MyConstants.CACHE_DIR_PATH,
+        )
+      },
     ): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
       @Suppress("UNCHECKED_CAST")
       override fun <T : ViewModel> create(modelClass: Class<T>): T =
         VideoToGifExportOptionsViewModel(
-          inputVideoPath, duration, cropParams, outputSpeed, estimator, thumbGenerator
+          inputVideoPath, duration, cropParams, outputSpeed, estimator, thumbGenerator,
+          smartTrimDetectorFactory,
         ) as T
     }
   }

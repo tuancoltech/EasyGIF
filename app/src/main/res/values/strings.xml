@@ -104,6 +104,10 @@
   <string name="loop_mode_boomerang">Boomerang</string>
   <string name="loop_mode_smart_trim">Smart trim</string>
   <string name="loop_mode_boomerang_size_warning">Output duration will be ~2× longer</string>
+  <string name="smart_trim_dialog_title">Adjust trim point?</string>
+  <string name="smart_trim_dialog_message">Smart Trim found a smoother loop point at %1$s (your trim: %2$s).</string>
+  <string name="smart_trim_use_smart">Use Smart Trim</string>
+  <string name="smart_trim_use_mine">Use My Trim</string>
   <string name="filter_none">None</string>
   <string name="filter_vintage">Vintage</string>
   <string name="filter_neon">Neon</string>
