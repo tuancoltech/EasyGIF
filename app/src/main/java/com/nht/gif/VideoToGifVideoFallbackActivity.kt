@@ -4,38 +4,48 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.OnBackPressedCallback
+import androidx.activity.compose.setContent
+import androidx.compose.runtime.mutableStateOf
 import com.arthenica.ffmpegkit.FFmpegKit
 import com.arthenica.ffmpegkit.FFmpegKitConfig
 import com.nht.gif.MyConstants.EXTRA_VIDEO_PATH
 import com.nht.gif.MyConstants.FFMPEG_COMMAND_PREFIX_FOR_ALL
 import com.nht.gif.MyConstants.INPUT_FILE_DIR
-import com.nht.gif.databinding.ActivityVideoToGifVideoFallbackBinding
 import com.nht.gif.toolbox.FileTools.resetDirectory
 import com.nht.gif.toolbox.MediaTools.getVideoDurationMsByFFmpeg
 import com.nht.gif.toolbox.Toolbox.getExtra
 import com.nht.gif.toolbox.Toolbox.keepScreenOn
 import com.nht.gif.toolbox.Toolbox.logRed
-import com.nht.gif.toolbox.Toolbox.onClick
 import com.nht.gif.toolbox.Toolbox.toast
+import com.nht.gif.ui.VideoToGifVideoFallbackScreen
+import com.nht.gif.ui.theme.EasyGifTheme
 import kotlin.concurrent.thread
 import kotlin.math.min
 import kotlin.math.roundToInt
 
 class VideoToGifVideoFallbackActivity : BaseActivity() {
-  private val binding by lazy { ActivityVideoToGifVideoFallbackBinding.inflate(layoutInflater) }
   private val inputVideoPath by lazy { intent.getExtra<String>(EXTRA_VIDEO_PATH) }
+  private val transcodingTitle by lazy { mutableStateOf(getString(R.string.transcoding_video)) }
+  private val transcodingProgress by lazy { mutableStateOf<Int?>(null) }
   private var taskThread: Thread? = null
   private var taskQuitOrFailed = false
 
   override fun onCreateIfEulaAccepted(savedInstanceState: Bundle?) {
-    setContentView(binding.root)
     setFinishOnTouchOutside(false)
     onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
       override fun handleOnBackPressed() {
         quitOrFailed(getString(R.string.cancelled))
       }
     })
-    binding.mbClose.onClick { quitOrFailed(getString(R.string.cancelled)) }
+    setContent {
+      EasyGifTheme {
+        VideoToGifVideoFallbackScreen(
+          title = transcodingTitle.value,
+          progress = transcodingProgress.value,
+          onClose = { quitOrFailed(getString(R.string.cancelled)) },
+        )
+      }
+    }
     taskThread = thread { performFallback() }
   }
 
@@ -66,9 +76,8 @@ class VideoToGifVideoFallbackActivity : BaseActivity() {
       if (duration != null) {
         val progress = min((it.time * 100 / duration).roundToInt(), 99)
         runOnUiThread {
-          binding.mtvTitle.text = getString(R.string.transcoding_video__d_, progress)
-          binding.linearProgressIndicator.isIndeterminate = false
-          binding.linearProgressIndicator.setProgress(progress, true)
+          transcodingTitle.value = getString(R.string.transcoding_video__d_, progress)
+          transcodingProgress.value = progress
         }
       }
     })
