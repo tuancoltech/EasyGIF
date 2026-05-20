@@ -4,12 +4,13 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.OnBackPressedCallback
+import androidx.activity.compose.setContent
+import androidx.compose.runtime.mutableStateOf
 import com.arthenica.ffmpegkit.FFmpegKit
 import com.arthenica.ffmpegkit.FFmpegKitConfig
 import com.nht.gif.MyApplication.Companion.appContext
 import com.nht.gif.MyConstants.EXTRA_GIF_PATH
 import com.nht.gif.MyConstants.FFMPEG_COMMAND_PREFIX_FOR_ALL_AN
-import com.nht.gif.databinding.ActivityGifToVideoBinding
 import com.nht.gif.toolbox.FileTools
 import com.nht.gif.toolbox.FileTools.createNewFile
 import com.nht.gif.toolbox.MediaTools.getVideoDurationMsByFFmpeg
@@ -17,27 +18,34 @@ import com.nht.gif.toolbox.Toolbox.constraintBy
 import com.nht.gif.toolbox.Toolbox.getExtra
 import com.nht.gif.toolbox.Toolbox.keepScreenOn
 import com.nht.gif.toolbox.Toolbox.logRed
-import com.nht.gif.toolbox.Toolbox.onClick
 import com.nht.gif.toolbox.Toolbox.toast
+import com.nht.gif.ui.VideoToGifProgressScreen
+import com.nht.gif.ui.theme.EasyGifTheme
 import kotlin.concurrent.thread
 import kotlin.math.roundToInt
 
 class GifToVideoActivity : BaseActivity() {
-  private val binding by lazy { ActivityGifToVideoBinding.inflate(layoutInflater) }
   private val inputGifPath by lazy { intent.getExtra<String>(EXTRA_GIF_PATH) }
   private var taskThread: Thread? = null
   private var taskQuitOrFailed = false
+  private val convertingTitle by lazy { mutableStateOf(getString(R.string.converting_to_video_0_percent)) }
+  private val convertingProgress by lazy { mutableStateOf<Int?>(0) }
 
   override fun onCreateIfEulaAccepted(savedInstanceState: Bundle?) {
-    setContentView(binding.root)
     setFinishOnTouchOutside(false)
     onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
       override fun handleOnBackPressed() {
         quitOrFailed(getString(R.string.cancelled))
       }
     })
-    binding.mbClose.onClick {
-      quitOrFailed(getString(R.string.cancelled))
+    setContent {
+      EasyGifTheme {
+        VideoToGifProgressScreen(
+          title = convertingTitle.value,
+          progress = convertingProgress.value,
+          onClose = { quitOrFailed(getString(R.string.cancelled)) },
+        )
+      }
     }
     taskThread = thread { performTranscode() }
   }
@@ -72,8 +80,8 @@ class GifToVideoActivity : BaseActivity() {
     }, {
       val progress = (it.time * 100 / duration).roundToInt().constraintBy(0..99)
       runOnUiThread {
-        binding.mtvTitle.text = getString(R.string.converting_to_video_d_percent, progress)
-        binding.linearProgressIndicator.setProgress(progress, true)
+        convertingTitle.value = getString(R.string.converting_to_video_d_percent, progress)
+        convertingProgress.value = progress
       }
     })
   }
