@@ -4,6 +4,8 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.OnBackPressedCallback
+import androidx.activity.compose.setContent
+import androidx.compose.runtime.mutableStateOf
 import com.arthenica.ffmpegkit.FFmpegKit
 import com.arthenica.ffmpegkit.FFmpegKitConfig
 import com.nht.gif.MyConstants.EXTRA_TASK_BUILDER_VIDEO_TO_GIF
@@ -11,7 +13,6 @@ import com.nht.gif.MyConstants.OUTPUT_GIF_TEMP_PATH
 import com.nht.gif.MyConstants.OUTPUT_WEBP_TEMP_PATH
 import com.nht.gif.MyConstants.VIDEO_TO_GIF_EXTRACTED_FRAMES_PATH
 import com.nht.gif.model.OutputFormat
-import com.nht.gif.databinding.ActivityVideoToGifPerformerBinding
 import com.nht.gif.toolbox.FileTools
 import com.nht.gif.toolbox.FileTools.copyFile
 import com.nht.gif.toolbox.FileTools.createNewFile
@@ -22,27 +23,34 @@ import com.nht.gif.toolbox.Toolbox.constraintBy
 import com.nht.gif.toolbox.Toolbox.getExtra
 import com.nht.gif.toolbox.Toolbox.keepScreenOn
 import com.nht.gif.toolbox.Toolbox.logRed
-import com.nht.gif.toolbox.Toolbox.onClick
+import com.nht.gif.ui.VideoToGifProgressScreen
+import com.nht.gif.ui.theme.EasyGifTheme
 import kotlin.concurrent.thread
 import kotlin.math.max
 
 class VideoToGifPerformerActivity : BaseActivity() {
-  private val binding by lazy { ActivityVideoToGifPerformerBinding.inflate(layoutInflater) }
   private var taskThread: Thread? = null
   private var taskQuitOrFailed = false
   private val taskBuilder by lazy { intent.getExtra<TaskBuilderVideoToGif>(EXTRA_TASK_BUILDER_VIDEO_TO_GIF) }
   private var previousUpdatedFileSize = 0L
+  private val exportTitle by lazy { mutableStateOf("") }
+  private val exportProgress by lazy { mutableStateOf<Int?>(null) }
 
   override fun onCreateIfEulaAccepted(savedInstanceState: Bundle?) {
-    setContentView(binding.root)
     setFinishOnTouchOutside(false)
     onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
       override fun handleOnBackPressed() {
         quitOrFailed(getString(R.string.cancelled))
       }
     })
-    binding.mbClose.onClick {
-      quitOrFailed(getString(R.string.cancelled))
+    setContent {
+      EasyGifTheme {
+        VideoToGifProgressScreen(
+          title = exportTitle.value,
+          progress = exportProgress.value,
+          onClose = { quitOrFailed(getString(R.string.cancelled)) },
+        )
+      }
     }
     taskThread = thread { performPart1() }
   }
@@ -137,15 +145,8 @@ class VideoToGifPerformerActivity : BaseActivity() {
 
   private fun putProgress(progress: Int?, text: String) {
     runOnUiThread {
-      binding.linearProgressIndicator.apply {
-        if (progress == null) {
-          isIndeterminate = true
-        } else {
-          isIndeterminate = false
-          setProgress(progress.constraintBy(0..100), true)
-        }
-      }
-      binding.mtvTitle.text = text
+      exportTitle.value = text
+      exportProgress.value = progress?.constraintBy(0..100)
     }
   }
 

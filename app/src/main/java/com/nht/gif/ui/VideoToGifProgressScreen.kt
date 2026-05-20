@@ -25,14 +25,15 @@ import com.nht.gif.ui.theme.EasyGifTheme
 private val ProgressTrackColor = Color(0xFF050605.toInt())
 
 /**
- * Stateless screen composable for the video-to-GIF fallback transcoding dialog.
+ * Shared stateless composable for dialog-themed activities that show a progress indicator
+ * while a background task runs (e.g. transcoding, GIF export).
  *
- * @param title  Text shown above the progress indicator. Changes to show percentage during transcoding.
- * @param progress  Transcoding progress 0–99, or null while indeterminate.
- * @param onClose  Called when the user taps the close button.
+ * @param title     Label shown above the progress bar. Updated by the host Activity during the task.
+ * @param progress  Task progress 0–100, or null while indeterminate.
+ * @param onClose   Called when the user taps the close button or triggers back navigation.
  */
 @Composable
-fun VideoToGifVideoFallbackScreen(
+fun VideoToGifProgressScreen(
     title: String,
     progress: Int?,
     onClose: () -> Unit,
@@ -87,10 +88,10 @@ fun VideoToGifVideoFallbackScreen(
 
 @Preview(showBackground = true, backgroundColor = 0xFF191C19)
 @Composable
-private fun VideoToGifVideoFallbackScreenIndeterminatePreview() {
+private fun VideoToGifProgressScreenIndeterminatePreview() {
     EasyGifTheme {
-        VideoToGifVideoFallbackScreen(
-            title = "Transcoding video",
+        VideoToGifProgressScreen(
+            title = "Exporting GIF...",
             progress = null,
             onClose = {},
         )
@@ -99,10 +100,10 @@ private fun VideoToGifVideoFallbackScreenIndeterminatePreview() {
 
 @Preview(showBackground = true, backgroundColor = 0xFF191C19, name = "With progress 42%")
 @Composable
-private fun VideoToGifVideoFallbackScreenDeterminatePreview() {
+private fun VideoToGifProgressScreenDeterminatePreview() {
     EasyGifTheme {
-        VideoToGifVideoFallbackScreen(
-            title = "Transcoding video (42%)",
+        VideoToGifProgressScreen(
+            title = "Exporting GIF... (42%)",
             progress = 42,
             onClose = {},
         )

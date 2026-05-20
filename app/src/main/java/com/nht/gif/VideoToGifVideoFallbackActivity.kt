@@ -17,7 +17,7 @@ import com.nht.gif.toolbox.Toolbox.getExtra
 import com.nht.gif.toolbox.Toolbox.keepScreenOn
 import com.nht.gif.toolbox.Toolbox.logRed
 import com.nht.gif.toolbox.Toolbox.toast
-import com.nht.gif.ui.VideoToGifVideoFallbackScreen
+import com.nht.gif.ui.VideoToGifProgressScreen
 import com.nht.gif.ui.theme.EasyGifTheme
 import kotlin.concurrent.thread
 import kotlin.math.min
@@ -39,7 +39,7 @@ class VideoToGifVideoFallbackActivity : BaseActivity() {
     })
     setContent {
       EasyGifTheme {
-        VideoToGifVideoFallbackScreen(
+        VideoToGifProgressScreen(
           title = transcodingTitle.value,
           progress = transcodingProgress.value,
           onClose = { quitOrFailed(getString(R.string.cancelled)) },
