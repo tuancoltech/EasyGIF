@@ -1,6 +1,7 @@
 plugins {
   alias(libs.plugins.android.application)
   alias(libs.plugins.kotlin.android)
+  alias(libs.plugins.compose.compiler)
 }
 
 def localProps = new Properties()
@@ -56,6 +57,7 @@ android {
   buildFeatures {
     viewBinding true
     buildConfig true
+    compose true
   }
   compileOptions {
     sourceCompatibility JavaVersion.VERSION_17
@@ -73,6 +75,14 @@ dependencies {
   // It was cloned and compiled from https://github.com/kohler/gifsicle on January 9, 2024.
 
   // OutlineSpan.kt was cloned from https://github.com/santaevpavel/OutlineSpan on February 1, 2024.
+
+  implementation platform(libs.compose.bom)
+  implementation libs.compose.ui
+  implementation libs.compose.ui.tooling.preview
+  implementation libs.compose.material3
+  implementation libs.compose.foundation
+  implementation libs.activity.compose
+  debugImplementation libs.compose.ui.tooling
 
   implementation libs.androidx.core.ktx
   implementation libs.androidx.appcompat
