@@ -3,16 +3,17 @@ package com.nht.gif
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import com.nht.gif.databinding.ActivityOpenSourceLicenseBinding
-import com.nht.gif.toolbox.Toolbox.onClick
+import androidx.activity.compose.setContent
+import com.nht.gif.ui.OpenSourceLicenseScreen
+import com.nht.gif.ui.theme.EasyGifTheme
 
 class OpenSourceLicenseActivity : BaseActivity() {
-  private val binding by lazy { ActivityOpenSourceLicenseBinding.inflate(layoutInflater) }
 
   override fun onCreateIfEulaAccepted(savedInstanceState: Bundle?) {
-    setContentView(binding.root)
-    binding.mbDone.onClick(HapticFeedbackType.CONFIRM) {
-      finish()
+    setContent {
+      EasyGifTheme {
+        OpenSourceLicenseScreen(onDone = ::finish)
+      }
     }
   }
 
