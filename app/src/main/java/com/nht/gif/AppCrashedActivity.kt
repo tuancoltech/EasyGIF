@@ -5,34 +5,31 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
+import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
 import com.arthenica.ffmpegkit.FFmpegKit
 import com.nht.gif.MyApplication.Companion.appContext
 import com.nht.gif.MyConstants.EXTRA_STACK_TRACE_STRING
-import com.nht.gif.databinding.ActivityAppCrashedBinding
 import com.nht.gif.toolbox.Toolbox
-import com.nht.gif.toolbox.Toolbox.onClick
+import com.nht.gif.ui.AppCrashedScreen
+import com.nht.gif.ui.theme.EasyGifTheme
 
 class AppCrashedActivity : AppCompatActivity() {
-  private val binding by lazy { ActivityAppCrashedBinding.inflate(layoutInflater) }
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
-    setContentView(binding.root)
     setFinishOnTouchOutside(false)
     val stackTraceString = intent.getStringExtra(EXTRA_STACK_TRACE_STRING)
     val problemLog =
       "[Exception Info]\n${stackTraceString}\n" + "[System Info]\n${systemInfo()}\n" + "[Application Info]\n${applicationInfo()}"
-    binding.mtvProblemLog.text = problemLog
-    binding.mbCopy.onClick {
-      Toolbox.copyTextToClipboard(problemLog, context.getString(R.string.copied_to_clipboard))
-
-    }
-    binding.mbExit.onClick {
-      finish()
-    }
-    binding.mtvFollowWechat.onClick {
-      DonateCryptoActivity.start(this@AppCrashedActivity)
+    setContent {
+      EasyGifTheme {
+        AppCrashedScreen(
+          problemLog = problemLog,
+          onCopy = { Toolbox.copyTextToClipboard(problemLog, getString(R.string.copied_to_clipboard)) },
+          onExit = ::finish,
+        )
+      }
     }
   }
 
