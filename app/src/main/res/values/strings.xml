@@ -23,7 +23,6 @@
   <string name="crop_square">Square</string>
   <string name="gif_duration_s">GIF duration: %s seconds</string>
   <string name="effect_needs_to_be_viewed_after_exporting">ℹ️ The effects of %s needs to be viewed after exporting</string>
-  <string name="beta_info">The current version is for testing purposes only and may contain bugs. \nThe internal test will end in %d days. After the end, please download the official version from my WeChat account.</string>
   <string name="developer_name_email">Developer: Tuan Nguyen (tuancoltech@gmail.com)</string>
   <string name="files">Files</string>
   <string name="photos">Photos</string>
@@ -38,10 +37,7 @@
   <string name="sorry_easygif_error">Sorry, there was an error while running Easy GIF. \nI hope you can send the problem log to the developer\'s email [tuancoltech@gmail.com] so that this error can be fixed.</string>
   <string name="error_log">Error log</string>
   <string name="copy_to_clipboard">Copy to clipboard</string>
-  <string name="follow_wechat_to_feedback">Follow my WeChat public account [光光可爱小仙女] to provide feedback</string>
   <string name="exit">Exit</string>
-  <string name="beta_ended_please_follow_wechat">The internal testing of the current version has ended. Please follow my WeChat official account and download the official version to continue using it.</string>
-  <string name="follow_wechat_to_download_release">Follow my WeChat account</string>
   <string name="donate">Donate</string>
   <string name="donate_support">Donate</string>
   <string name="if_you_like_easygif_please_donate">If you like Easy GIF, please donate to me to support me in developing more useful Apps!</string>
