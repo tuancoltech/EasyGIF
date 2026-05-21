@@ -19,9 +19,6 @@ abstract class BaseActivity : AppCompatActivity() {
       /** Ask user to accept EULA */
       EulaActivity.start(this)
       finish()
-    } else if (BetaEndedActivity.testVersionRemainingDays() < 0) {
-      BetaEndedActivity.start(this)
-      finish()
     } else {
       if (BuildConfig.DEBUG) {
         /** Show a dialog with logs when app crashed */

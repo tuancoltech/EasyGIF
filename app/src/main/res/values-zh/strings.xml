@@ -21,7 +21,6 @@
   <string name="crop_square">方形</string>
   <string name="gif_duration_s">GIF 时长：%s 秒</string>
   <string name="effect_needs_to_be_viewed_after_exporting">ℹ️ %s的效果需在导出后查看</string>
-  <string name="beta_info">当前版本仅供测试使用，可能存在漏洞。\n内测将在 %d 天后结束，结束后请在微信公众号下载正式版使用。</string>
   <string name="developer_name_email">开发者：Tuan Nguyen (tuancoltech@gmail.com)</string>
   <string name="files">文件</string>
   <string name="photos">相册</string>
@@ -36,10 +35,7 @@
   <string name="sorry_easygif_error">非常抱歉，小萌 GIF 运行过程中出现错误。\n希望您能将问题日志发送至开发者邮箱 [tuancoltech@gmail.com]，以便修复此错误。</string>
   <string name="error_log">问题日志</string>
   <string name="copy_to_clipboard">复制到剪贴板</string>
-  <string name="follow_wechat_to_feedback">关注公众号【光光可爱小仙女】反馈问题</string>
   <string name="exit">退出</string>
-  <string name="beta_ended_please_follow_wechat">当前版本内测已结束，请关注微信公众号，下载正式版，即可继续使用。</string>
-  <string name="follow_wechat_to_download_release">关注微信公众号，下载正式版</string>
   <string name="donate">赞赏</string>
   <string name="donate_support">赞赏支持</string>
   <string name="if_you_like_easygif_please_donate">如果您喜欢小萌GIF，还请您赞赏作者，支持作者开发更多好用的软件！</string>

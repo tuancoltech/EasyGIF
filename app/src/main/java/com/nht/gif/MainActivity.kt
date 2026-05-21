@@ -62,7 +62,6 @@ class MainActivity : BaseActivity() {
     setContentView(binding.root)
     setSupportActionBar(binding.materialToolbar)
     binding.materialToolbar.subtitle = getString(R.string.version_X, BuildConfig.VERSION_NAME)
-    binding.mtvBetaInfo.text = getString(R.string.beta_info, BetaEndedActivity.testVersionRemainingDays())
     binding.mcvVideoToGif.apply {
       onClick { importVideoToGif() }
       enableDropFile(this@MainActivity, "video/*") {
