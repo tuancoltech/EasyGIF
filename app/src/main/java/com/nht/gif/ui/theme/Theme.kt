@@ -18,6 +18,8 @@ private val EasyGifColorScheme = darkColorScheme(
     outline = Color(0xFFF0F1ED),
     /** Matches @color/divider — used for hairline dividers and decorative borders. */
     outlineVariant = Color(0x80757874),
+    /** Matches @color/green_light — used for accent highlights (drag handles, link text, slider ticks). */
+    tertiary = Color(0xFF8FF2AF),
 )
 
 @Composable

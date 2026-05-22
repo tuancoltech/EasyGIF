@@ -14,7 +14,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
@@ -25,9 +24,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import com.nht.gif.R
 import com.nht.gif.ui.theme.Dimens
 import com.nht.gif.ui.theme.EasyGifTheme
-
-/** #8ff2af — matches android:textColorLink in themes.xml */
-private val LinkColor = Color(0xFF8FF2AF.toInt())
 
 /**
  * Stateless screen composable for the Open Source License screen.
@@ -50,7 +46,7 @@ fun OpenSourceLicenseScreen(onDone: () -> Unit) {
                         text = buildAnnotatedString {
                             append(sourceUrl)
                             addLink(
-                                LinkAnnotation.Url(sourceUrl, TextLinkStyles(SpanStyle(color = LinkColor, textDecoration = TextDecoration.Underline))),
+                                LinkAnnotation.Url(sourceUrl, TextLinkStyles(SpanStyle(color = MaterialTheme.colorScheme.tertiary, textDecoration = TextDecoration.Underline))),
                                 start = 0,
                                 end = sourceUrl.length,
                             )
@@ -78,7 +74,7 @@ fun OpenSourceLicenseScreen(onDone: () -> Unit) {
                                 val start = length
                                 append(line)
                                 addLink(
-                                    LinkAnnotation.Url("https://$line", TextLinkStyles(SpanStyle(color = LinkColor, textDecoration = TextDecoration.Underline))),
+                                    LinkAnnotation.Url("https://$line", TextLinkStyles(SpanStyle(color = MaterialTheme.colorScheme.tertiary, textDecoration = TextDecoration.Underline))),
                                     start = start,
                                     end = length,
                                 )
