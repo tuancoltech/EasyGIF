@@ -36,12 +36,6 @@ import com.nht.gif.R
 import com.nht.gif.ui.theme.Dimens
 import com.nht.gif.ui.theme.EasyGifTheme
 
-/** Matches @color/gray (#757874). */
-private val GreyColor = Color(0xFF757874)
-
-/** Matches @color/divider (gray_half at 50% alpha). */
-private val DividerColor = Color(0x80757874.toInt())
-
 /**
  * Stateless screen composable for the EULA / Privacy Policy dialog.
  *
@@ -101,13 +95,13 @@ fun EulaScreen(
                         Text(
                             text = stringResource(R.string.version_X, versionName),
                             style = MaterialTheme.typography.labelMedium,
-                            color = GreyColor,
+                            color = MaterialTheme.colorScheme.surfaceVariant,
                             modifier = Modifier.padding(top = 4.dp),
                         )
                     }
                 }
 
-                HorizontalDivider(color = DividerColor, thickness = Dimens.dividerThickness)
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = Dimens.dividerThickness)
 
                 SelectionContainer {
                     Column(
@@ -158,13 +152,13 @@ fun EulaScreen(
                                 else R.string.accept_license_above_to_use,
                             ),
                             style = MaterialTheme.typography.bodySmall,
-                            color = GreyColor,
+                            color = MaterialTheme.colorScheme.surfaceVariant,
                             modifier = Modifier.padding(top = 16.dp),
                         )
                     }
                 }
 
-                HorizontalDivider(color = DividerColor, thickness = Dimens.dividerThickness)
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = Dimens.dividerThickness)
 
                 Row(
                     verticalAlignment = Alignment.CenterVertically,

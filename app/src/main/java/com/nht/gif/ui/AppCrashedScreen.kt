@@ -17,7 +17,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.tooling.preview.Preview
@@ -25,9 +24,6 @@ import androidx.compose.ui.unit.sp
 import com.nht.gif.R
 import com.nht.gif.ui.theme.Dimens
 import com.nht.gif.ui.theme.EasyGifTheme
-
-/** Matches @color/divider (gray_half at 50% alpha). */
-private val DividerColor = Color(0x80757874.toInt())
 
 /**
  * Stateless screen composable for the app-crashed dialog.
@@ -55,7 +51,7 @@ fun AppCrashedScreen(
                     ),
                 )
             }
-            HorizontalDivider(color = DividerColor, thickness = Dimens.dividerThickness)
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = Dimens.dividerThickness)
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
@@ -82,7 +78,7 @@ fun AppCrashedScreen(
                         .padding(bottom = Dimens.smallPadding),
                 )
             }
-            HorizontalDivider(color = DividerColor, thickness = Dimens.dividerThickness)
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = Dimens.dividerThickness)
             OutlinedButton(
                 onClick = onExit,
                 modifier = Modifier
