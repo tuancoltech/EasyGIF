@@ -29,9 +29,6 @@ import com.nht.gif.ui.theme.EasyGifTheme
 /** #8ff2af — matches android:textColorLink in themes.xml */
 private val LinkColor = Color(0xFF8FF2AF.toInt())
 
-/** #80757874 — matches @color/divider (gray_half) */
-private val DividerColor = Color(0x80757874.toInt())
-
 /**
  * Stateless screen composable for the Open Source License screen.
  *
@@ -64,7 +61,7 @@ fun OpenSourceLicenseScreen(onDone: () -> Unit) {
                 }
             }
 
-            HorizontalDivider(color = DividerColor, thickness = Dimens.dividerThickness)
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = Dimens.dividerThickness)
 
             SelectionContainer {
                 Column {
@@ -94,7 +91,7 @@ fun OpenSourceLicenseScreen(onDone: () -> Unit) {
                 }
             }
 
-            HorizontalDivider(color = DividerColor, thickness = Dimens.dividerThickness)
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = Dimens.dividerThickness)
 
             Button(
                 onClick = onDone,

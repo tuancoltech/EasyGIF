@@ -16,6 +16,8 @@ private val EasyGifColorScheme = darkColorScheme(
     onBackground = Color(0xFFF0F1ED),
     surfaceVariant = Color(0xFF757874),
     outline = Color(0xFFF0F1ED),
+    /** Matches @color/divider — used for hairline dividers and decorative borders. */
+    outlineVariant = Color(0x80757874),
 )
 
 @Composable
