@@ -19,6 +19,8 @@ import java.io.File
 import java.io.FileOutputStream
 import java.nio.charset.Charset
 import kotlin.math.roundToInt
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 
 /**
@@ -53,8 +55,11 @@ object MediaTools {
    * back to FFmpeg. Returns null when neither method yields a decodable frame (unsupported codec,
    * a timestamp with no reachable frame, a failed decode, ...) so callers can degrade gracefully
    * instead of crashing on a force-unwrapped null.
+   *
+   * Suspends and runs the (heavy) retrieval + decode on [Dispatchers.IO] so it never blocks the
+   * caller's thread; must be invoked from a coroutine.
    */
-  fun getVideoSingleFrame(path: String, timestamp_ms: Long): Bitmap? {
+  suspend fun getVideoSingleFrame(path: String, timestamp_ms: Long): Bitmap? = withContext(Dispatchers.IO) {
     val frameFromRetriever = runCatching {
       with(MediaMetadataRetriever()) {
         try {
@@ -66,7 +71,7 @@ object MediaTools {
         }
       }
     }.getOrNull()
-    return frameFromRetriever ?: decodeSingleFrameWithFFmpeg(path, timestamp_ms)
+    frameFromRetriever ?: decodeSingleFrameWithFFmpeg(path, timestamp_ms)
   }
 
   /**

@@ -13,6 +13,7 @@ import android.view.ViewConfiguration
 import android.view.inputmethod.InputMethodManager
 import androidx.core.view.children
 import androidx.core.widget.addTextChangedListener
+import androidx.lifecycle.lifecycleScope
 import com.bumptech.glide.Glide
 import com.google.android.material.radiobutton.MaterialRadioButton
 import com.nht.gif.MyConstants.EXTRA_TEXT_RENDER
@@ -28,6 +29,7 @@ import com.nht.gif.toolbox.Toolbox.onClick
 import kotlin.math.abs
 import kotlin.math.pow
 import kotlin.math.sqrt
+import kotlinx.coroutines.launch
 
 @SuppressLint("RtlHardcoded")
 class AddTextActivity : BaseActivity() {
@@ -43,12 +45,15 @@ class AddTextActivity : BaseActivity() {
     val videoPath = intent.getExtra<String>(EXTRA_VIDEO_PATH)
     val videoPosition = intent.getExtra<Long>(EXTRA_VIDEO_POSITION)
     textRender = intent.getExtra(EXTRA_TEXT_RENDER)
-    frame = getVideoSingleFrame(videoPath, videoPosition) ?: run {
-      Toolbox.toast(R.string.unable_to_read_video)
-      finish()
-      return
+    lifecycleScope.launch {
+      frame = getVideoSingleFrame(videoPath, videoPosition) ?: run {
+        Toolbox.toast(R.string.unable_to_read_video)
+        finish()
+        return@launch
+      }
+      Glide.with(this@AddTextActivity).load(frame).into(binding.acivFrame)
+      updateTextRender() // frame size now known: render the initial text overlay
     }
-    Glide.with(this).load(frame).into(binding.acivFrame)
     binding.mbClose.setOnClickListener {
       finishAfterTransition()
     }
@@ -121,7 +126,6 @@ class AddTextActivity : BaseActivity() {
     }
     mbPickedColorBackgroundColor = textRender.color
     setupAcivText()
-    updateTextRender()
   }
 
   @SuppressLint("ClickableViewAccessibility")
@@ -135,6 +139,7 @@ class AddTextActivity : BaseActivity() {
     var textSizeActionPointerDown = textRender.size
     var enteredScaleMode = false
     binding.acivText.setOnTouchListener { view, event ->
+      if (!::frame.isInitialized) return@setOnTouchListener true // ignore touches until the frame is ready
       when (event.pointerCount) {
         1 -> {
           when (event.actionMasked) {
@@ -237,6 +242,9 @@ class AddTextActivity : BaseActivity() {
 
   private fun updateTextRender(textRender: TextRender? = null) {
     if (textRender != null) this.textRender = textRender
+    // Frame is decoded off the main thread; skip rendering until it is ready. Edits made
+    // meanwhile are retained in this.textRender and shown by the initial render in the coroutine.
+    if (!::frame.isInitialized) return
     binding.acivText.setImageBitmap(TextRender.render(this.textRender, frame.width, frame.height))
   }
 

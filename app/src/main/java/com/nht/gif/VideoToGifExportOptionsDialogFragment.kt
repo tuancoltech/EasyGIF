@@ -17,6 +17,7 @@ import androidx.core.widget.TextViewCompat
 import androidx.core.widget.doAfterTextChanged
 import androidx.fragment.app.DialogFragment
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 import android.graphics.drawable.Animatable
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -378,20 +379,22 @@ class VideoToGifExportOptionsDialogFragment : DialogFragment() {
       updatePreviewImage()
     }
     binding.mbClose.onClick { dismiss() }
-    frame = getVideoSingleFrame(
-      vtgActivity.inputVideoPath, vtgActivity.videoView.currentPosition.toLong()
-    ) ?: run {
-      toast(R.string.unable_to_read_video)
-      dismissAllowingStateLoss()
-      return
+    viewLifecycleOwner.lifecycleScope.launch {
+      frame = getVideoSingleFrame(
+        vtgActivity.inputVideoPath, vtgActivity.videoView.currentPosition.toLong()
+      ) ?: run {
+        toast(R.string.unable_to_read_video)
+        dismissAllowingStateLoss()
+        return@launch
+      }
+      Canvas(frame).drawBitmap(
+        TextRender.render(vtgActivity.textRender, frame.width, frame.height), 0f, 0f, null
+      ) // Merge the text layer with the frame
+      frame = vtgActivity.cropParams.crop(frame) // Crop
+      previewController = PreviewController(frame, vtgActivity.cropParams)
+      binding.viewColorKeyIndicator.backgroundColor = vtgActivity.savedColorKeyColor ?: frame[0, 0]
+      updatePreviewImage()
     }
-    Canvas(frame).drawBitmap(
-      TextRender.render(vtgActivity.textRender, frame.width, frame.height), 0f, 0f, null
-    ) // Merge the text layer with the frame
-    frame = vtgActivity.cropParams.crop(frame) // Crop
-    previewController = PreviewController(frame, vtgActivity.cropParams)
-    binding.viewColorKeyIndicator.backgroundColor = vtgActivity.savedColorKeyColor ?: frame[0, 0]
-    updatePreviewImage()
   }
 
   /**
