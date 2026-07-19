@@ -48,30 +48,35 @@ object MediaTools {
     }
   }
 
-  fun getVideoSingleFrame(path: String, timestamp_ms: Long) = with(MediaMetadataRetriever()) {
-    try {
-      setDataSource(path)
-      getFrameAtTime(
-        timestamp_ms * 1000L,
-        MediaMetadataRetriever.OPTION_CLOSEST_SYNC // OPTION_CLOSEST is slower and may cause NullPointerException, avoid using it.
-      )!!
-    } catch (e: Exception) {
-      /**
-       * Even if it is set to OPTION_CLOSEST_SYNC, the getFrameAtTime() method still has the probability of NullPointerException.
-       * Therefore, use FFmpeg as a fallback method.
-       **/
-      /**
-       * Even if it is set to OPTION_CLOSEST_SYNC, the getFrameAtTime() method still has the probability of NullPointerException.
-       * Therefore, use FFmpeg as a fallback method.
-       **/
-      getVideoSingleFrameWithFFmpeg(
-        path, timestamp_ms, 5, MyConstants.GET_VIDEO_SINGLE_FRAME_WITH_FFMPEG_TEMP_PATH
-      )
-      BitmapFactory.decodeFile(MyConstants.GET_VIDEO_SINGLE_FRAME_WITH_FFMPEG_TEMP_PATH)
-        .copy(Bitmap.Config.ARGB_8888, true)!!
-    } finally {
-      release()
-    }
+  /**
+   * Extracts a single frame at [timestamp_ms], trying MediaMetadataRetriever first and falling
+   * back to FFmpeg. Returns null when neither method yields a decodable frame (unsupported codec,
+   * a timestamp with no reachable frame, a failed decode, ...) so callers can degrade gracefully
+   * instead of crashing on a force-unwrapped null.
+   */
+  fun getVideoSingleFrame(path: String, timestamp_ms: Long): Bitmap? {
+    val frameFromRetriever = runCatching {
+      with(MediaMetadataRetriever()) {
+        try {
+          setDataSource(path)
+          // OPTION_CLOSEST_SYNC because OPTION_CLOSEST is slower and may throw NullPointerException.
+          getFrameAtTime(timestamp_ms * 1000L, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+        } finally {
+          release()
+        }
+      }
+    }.getOrNull()
+    return frameFromRetriever ?: decodeSingleFrameWithFFmpeg(path, timestamp_ms)
+  }
+
+  /**
+   * FFmpeg fallback for [getVideoSingleFrame]: writes one frame to a temp file and decodes it.
+   * Returns null when FFmpeg produced nothing decodable.
+   */
+  private fun decodeSingleFrameWithFFmpeg(path: String, timestamp_ms: Long): Bitmap? {
+    getVideoSingleFrameWithFFmpeg(path, timestamp_ms, 5, MyConstants.GET_VIDEO_SINGLE_FRAME_WITH_FFMPEG_TEMP_PATH)
+    return BitmapFactory.decodeFile(MyConstants.GET_VIDEO_SINGLE_FRAME_WITH_FFMPEG_TEMP_PATH)
+      ?.copy(Bitmap.Config.ARGB_8888, true)
   }
 
   fun getVideoSingleFrameWithFFmpeg(

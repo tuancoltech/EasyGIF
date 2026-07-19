@@ -43,7 +43,11 @@ class AddTextActivity : BaseActivity() {
     val videoPath = intent.getExtra<String>(EXTRA_VIDEO_PATH)
     val videoPosition = intent.getExtra<Long>(EXTRA_VIDEO_POSITION)
     textRender = intent.getExtra(EXTRA_TEXT_RENDER)
-    frame = getVideoSingleFrame(videoPath, videoPosition)
+    frame = getVideoSingleFrame(videoPath, videoPosition) ?: run {
+      Toolbox.toast(R.string.unable_to_read_video)
+      finish()
+      return
+    }
     Glide.with(this).load(frame).into(binding.acivFrame)
     binding.mbClose.setOnClickListener {
       finishAfterTransition()
