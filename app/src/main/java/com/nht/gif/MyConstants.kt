@@ -26,6 +26,7 @@ object MyConstants {
   const val EXTRA_STACK_TRACE_STRING = "EXTRA_STACK_TRACE_STRING"
   const val EXTRA_ADD_TEXT_RENDER = "EXTRA_ADD_TEXT_RENDER"
   const val EXTRA_SAVED_FILE_URI = "EXTRA_SAVED_FILE_URI"
+  const val EXTRA_FROM_FALLBACK = "EXTRA_FROM_FALLBACK"
 
   const val MIME_TYPE_IMAGE_GIF = "image/gif"
   const val MIME_TYPE_IMAGE_WEBP = "image/webp"

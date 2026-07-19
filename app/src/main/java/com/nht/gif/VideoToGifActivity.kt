@@ -13,6 +13,7 @@ import android.view.MotionEvent
 import android.widget.Button
 import androidx.activity.result.contract.ActivityResultContracts
 import com.nht.gif.MyConstants.EXTRA_ADD_TEXT_RENDER
+import com.nht.gif.MyConstants.EXTRA_FROM_FALLBACK
 import com.nht.gif.MyConstants.EXTRA_VIDEO_PATH
 import com.nht.gif.databinding.ActivityVideoToGifBinding
 import com.nht.gif.toolbox.MediaTools.getVideoDurationByAndroidSystem
@@ -24,18 +25,19 @@ import com.nht.gif.toolbox.Toolbox.newRunnableWithSelf
 import com.nht.gif.toolbox.Toolbox.onClick
 import com.nht.gif.toolbox.Toolbox.onSliderTouch
 import com.nht.gif.toolbox.Toolbox.sceneTransitionAnimationOptionBuilder
+import com.nht.gif.toolbox.Toolbox.toast
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.TimeUnit
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.roundToLong
+import androidx.core.graphics.createBitmap
 
 
 class VideoToGifActivity : BaseActivity() {
   private val binding by lazy { ActivityVideoToGifBinding.inflate(layoutInflater) }
   private val bottomSheetVideoToGif2PlaybackSpeed by lazy { BottomSheetVideoToGifPlaybackSpeed() }
-  private val videoToGifExportOptionsDialogFragment by lazy { VideoToGifExportOptionsDialogFragment() }
   private val bottomSheetVideoToGifCropRatio by lazy { BottomSheetVideoToGifCropRatio() }
   private val videoDuration by lazy { getVideoDurationByAndroidSystem(inputVideoPath) }
 
@@ -185,9 +187,26 @@ class VideoToGifActivity : BaseActivity() {
     }
     if (notInitializedBefore) {
       videoWH = with(mediaPlayer) { videoWidth to videoHeight }
+      // Some inputs pass the duration pre-flight check yet expose no decodable video track,
+      // so MediaPlayer reports 0x0 here and Bitmap.createBitmap would throw. Recover by
+      // transcoding — but defer the teardown to the next UI message: releasing the player
+      // now (inside VideoView's onPrepared) would crash VideoView's own getVideoWidth() call
+      // that runs right after this callback. An input still 0x0 after transcoding is genuinely
+      // unreadable (e.g. audio-only), so surface that instead of transcoding forever.
+      if (videoWH.first <= 0 || videoWH.second <= 0) {
+        videoView.post {
+          if (isFinishing || isDestroyed) return@post
+          videoView.stopPlayback()
+          if (intent.getBooleanExtra(EXTRA_FROM_FALLBACK, false)) toast(R.string.unable_to_read_video)
+          else VideoToGifVideoFallbackActivity.start(this, inputVideoPath)
+          finish()
+        }
+        return
+      }
       binding.cropImageView.apply {
         setBackgroundColor(Color.TRANSPARENT)
-        setImageBitmap(Bitmap.createBitmap(videoWH.first, videoWH.second, Bitmap.Config.ALPHA_8)
+        setImageBitmap(
+          createBitmap(videoWH.first, videoWH.second, Bitmap.Config.ALPHA_8)
           .apply { eraseColor(Color.TRANSPARENT) })
         cropRect = wholeImageRect
       }
@@ -292,10 +311,10 @@ class VideoToGifActivity : BaseActivity() {
   }
 
   companion object {
-    fun start(context: Context, inputVideoPath: String) = context.startActivity(
-      Intent(context, VideoToGifActivity::class.java).putExtra(
-        EXTRA_VIDEO_PATH, inputVideoPath
-      )
+    fun start(context: Context, inputVideoPath: String, fromFallback: Boolean = false) = context.startActivity(
+      Intent(context, VideoToGifActivity::class.java)
+        .putExtra(EXTRA_VIDEO_PATH, inputVideoPath)
+        .putExtra(EXTRA_FROM_FALLBACK, fromFallback)
     )
 
     fun intentAddTextResult(textRender: TextRender) = Intent().putExtra(EXTRA_ADD_TEXT_RENDER, textRender)
