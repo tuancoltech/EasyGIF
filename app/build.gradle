@@ -30,7 +30,7 @@ android {
   defaultConfig {
     applicationId "com.nht.gif"
     minSdk 29
-    targetSdk 35
+    targetSdk 36
     compileSdk 36
     versionCode 202605002
     versionName '2026.5.2'
