@@ -60,7 +60,7 @@ class VideoToGifVideoFallbackActivity : BaseActivity() {
     FFmpegKit.executeAsync(command, {
       when {
         it.returnCode.isValueSuccess && !taskQuitOrFailed -> {
-          VideoToGifActivity.start(this, fallbackMp4Path)
+          VideoToGifActivity.start(this, fallbackMp4Path, fromFallback = true)
           finish()
         }
 
