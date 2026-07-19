@@ -14,6 +14,8 @@ import com.nht.gif.toolbox.MediaTools.saveToPng
 import com.nht.gif.toolbox.Toolbox.logRed
 import java.io.File
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 
 /**
@@ -56,7 +58,11 @@ class PreviewController(
     suspend fun render(taskBuilder: TaskBuilderVideoToGifForPreview): Bitmap =
         withContext(renderContext) { renderBlocking(taskBuilder) }
 
-    private fun renderBlocking(taskBuilder: TaskBuilderVideoToGifForPreview): Bitmap = with(taskBuilder) {
+    // suspend + ensureActive() between stages: a superseded render aborts at the next stage instead
+    // of finishing the whole pipeline, freeing the single renderContext thread for the latest request.
+    // ensureActive() (not yield()) never releases the thread, so live renders still run atomically and
+    // the cache serialization guaranteed by the single-threaded dispatcher is preserved.
+    private suspend fun renderBlocking(taskBuilder: TaskBuilderVideoToGifForPreview): Bitmap = with(taskBuilder) {
         ensureCacheDirectory()
         ensureCached(getCacheShortLength()) {
             val (w, h) = cropParams.calcScaledResolution(shortLength)
@@ -91,8 +97,10 @@ class PreviewController(
                     "-y \"${getCacheFilterPaletteUse()}\""
             )
         }
+        currentCoroutineContext().ensureActive()
         bitmapCache.getOrPut(this.copy(lossy = null)) { BitmapFactory.decodeFile(getCacheFilterPaletteUse()) }
         if (!bitmapCache.containsKey(this)) {
+            currentCoroutineContext().ensureActive()
             gifsicleLossy(lossy!!, getCacheFilterPaletteUse(), getCacheFilterPaletteUseLossy(), false)
             fileExistsCache += getCacheFilterPaletteUseLossy()
             bitmapCache[this] = BitmapFactory.decodeFile(getCacheFilterPaletteUseLossy())
@@ -121,7 +129,10 @@ class PreviewController(
         resetDirectory(VIDEO_TO_GIF_PREVIEW_CACHE_DIR)
     }
 
-    private fun ensureCached(key: String, produce: () -> Unit) {
+    private suspend fun ensureCached(key: String, produce: () -> Unit) {
+        // Abort before each stage if the render was superseded; the check is before produce(), so a
+        // stage is either fully done and cached or not started — never a half-written file marked cached.
+        currentCoroutineContext().ensureActive()
         if (key !in fileExistsCache) { produce(); fileExistsCache += key }
     }
 }
