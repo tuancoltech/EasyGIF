@@ -19,6 +19,7 @@ import androidx.fragment.app.DialogFragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Job
 import android.graphics.drawable.Animatable
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.progressindicator.CircularProgressIndicatorSpec
@@ -67,6 +68,9 @@ class VideoToGifExportOptionsDialogFragment : DialogFragment() {
   /** Manages the FFmpeg preview-rendering pipeline and its associated bitmap/file caches.
    *  Non-null only between [onViewCreated] (after the frame is ready) and [onDestroyView]. */
   private var previewController: PreviewController? = null
+
+  /** The in-flight preview render, cancelled/superseded when a newer render is requested. */
+  private var renderJob: Job? = null
   private val viewModel: VideoToGifExportOptionsViewModel by lazy {
     ViewModelProvider(
       this,
@@ -252,14 +256,14 @@ class VideoToGifExportOptionsDialogFragment : DialogFragment() {
         val invertMatrix = Matrix()
         binding.acivSingleFramePreview.imageMatrix.invert(invertMatrix)
         invertMatrix.mapPoints(eventXY)
-        val bitmap = previewController?.render(createTaskBuilder().getForPreviewOnly().copy(colorKey = null))
-          ?: return@setOnTouchListener true
-        logRed("(v.drawable as BitmapDrawable).bitmap", "${bitmap.width}x${bitmap.height}")
-        val x = eventXY[0].toInt().constraintBy(0 until bitmap.width)
-        val y = eventXY[1].toInt().constraintBy(0 until bitmap.height)
-        binding.viewColorKeyIndicator.backgroundColor = bitmap[x, y]
-        binding.mcbColorKeyPreview.isChecked = true
-        updatePreviewImage()
+        renderPreview(createTaskBuilder().getForPreviewOnly().copy(colorKey = null)) { bitmap ->
+          logRed("(v.drawable as BitmapDrawable).bitmap", "${bitmap.width}x${bitmap.height}")
+          val x = eventXY[0].toInt().constraintBy(0 until bitmap.width)
+          val y = eventXY[1].toInt().constraintBy(0 until bitmap.height)
+          binding.viewColorKeyIndicator.backgroundColor = bitmap[x, y]
+          binding.mcbColorKeyPreview.isChecked = true
+          updatePreviewImage()
+        }
       }
       true
     }
@@ -421,14 +425,27 @@ class VideoToGifExportOptionsDialogFragment : DialogFragment() {
   /** Rebuilds and displays the preview bitmap from the current UI state, respecting the
    *  colour-key preview toggle: when the toggle is off, colour-key is excluded from rendering. */
   private fun updatePreviewImage() {
-    val controller = previewController ?: return
     val taskBuilder = createTaskBuilder().getForPreviewOnly()
-    binding.acivSingleFramePreview.setImageBitmap(
-      controller.render(
-        if (binding.chipEnableColorKey.isChecked && binding.mcbColorKeyPreview.isChecked) taskBuilder
-        else taskBuilder.copy(colorKey = null)
-      )
-    )
+    renderPreview(
+      if (binding.chipEnableColorKey.isChecked && binding.mcbColorKeyPreview.isChecked) taskBuilder
+      else taskBuilder.copy(colorKey = null)
+    ) { bitmap -> binding.acivSingleFramePreview.setImageBitmap(bitmap) }
+  }
+
+  /**
+   * Renders [taskBuilder] off the main thread (PreviewController serializes the work) while a
+   * spinner shows over the preview, then delivers the result to [onReady] on the main thread.
+   * Supersedes any in-flight render so only the latest request updates the UI.
+   */
+  private fun renderPreview(taskBuilder: TaskBuilderVideoToGifForPreview, onReady: (Bitmap) -> Unit) {
+    val controller = previewController ?: return
+    renderJob?.cancel()
+    renderJob = viewLifecycleOwner.lifecycleScope.launch {
+      binding.cpiPreview.show()
+      val bitmap = controller.render(taskBuilder)
+      binding.cpiPreview.hide()
+      onReady(bitmap)
+    }
   }
 
   /** Reads the resolution toggle group and optional custom text field to return the currently
@@ -465,7 +482,7 @@ class VideoToGifExportOptionsDialogFragment : DialogFragment() {
     vtgActivity.savedColorKeyColor = binding.viewColorKeyIndicator.backgroundColor
     super.onDestroyView()
     _binding = null
-    previewController?.clear()
+    previewController?.let { controller -> lifecycleScope.launch { controller.clear() } }
     previewController = null
     // Only resume playback if the video was actually prepared; if we dismissed early due to the
     // activity not being ready, starting playback here would be premature.

@@ -13,6 +13,8 @@ import com.nht.gif.toolbox.MediaTools.gifsicleLossy
 import com.nht.gif.toolbox.MediaTools.saveToPng
 import com.nht.gif.toolbox.Toolbox.logRed
 import java.io.File
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
  * Owns the static-preview rendering pipeline for the export-options dialog.
@@ -35,6 +37,10 @@ class PreviewController(
     private val bitmapCache = mutableMapOf<TaskBuilderVideoToGifForPreview, Bitmap>()
     private val fileExistsCache = mutableSetOf<String>()
 
+    // All disk/cache access is serialized on a single background thread so the mutable caches and
+    // temp files are never touched concurrently, regardless of how many render requests overlap.
+    private val renderContext = Dispatchers.IO.limitedParallelism(1)
+
     init {
         resetDirectory(VIDEO_TO_GIF_PREVIEW_CACHE_DIR)
     }
@@ -43,8 +49,14 @@ class PreviewController(
      * Produces the preview bitmap for [taskBuilder] by running the FFmpeg palette pipeline on
      * [frame]. Intermediate outputs (scaled, colour-keyed, filtered, palette-gen, palette-use,
      * lossy) are each written once and guarded by [fileExistsCache].
+     *
+     * Suspends and runs on [renderContext] so the pipeline never blocks the caller and never
+     * mutates the caches concurrently.
      */
-    fun render(taskBuilder: TaskBuilderVideoToGifForPreview): Bitmap = with(taskBuilder) {
+    suspend fun render(taskBuilder: TaskBuilderVideoToGifForPreview): Bitmap =
+        withContext(renderContext) { renderBlocking(taskBuilder) }
+
+    private fun renderBlocking(taskBuilder: TaskBuilderVideoToGifForPreview): Bitmap = with(taskBuilder) {
         ensureCacheDirectory()
         ensureCached(getCacheShortLength()) {
             val (w, h) = cropParams.calcScaledResolution(shortLength)
@@ -89,7 +101,7 @@ class PreviewController(
     }
 
     /** Clears both in-memory caches and deletes all files in the preview cache directory. */
-    fun clear() {
+    suspend fun clear() = withContext(renderContext) {
         bitmapCache.clear()
         fileExistsCache.clear()
         resetDirectory(VIDEO_TO_GIF_PREVIEW_CACHE_DIR)
