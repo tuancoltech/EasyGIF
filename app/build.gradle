@@ -39,8 +39,8 @@ android {
     minSdk 29
     targetSdk 36
     compileSdk 36
-    versionCode 202605002
-    versionName '2026.5.2'
+    versionCode 202607001
+    versionName '2026.7.1'
     testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     setProperty "archivesBaseName", "EasyGIF_${versionName}_${versionCode}"
   }
