@@ -21,6 +21,7 @@ import java.nio.charset.Charset
 import kotlin.math.roundToInt
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import androidx.core.graphics.createBitmap
 
 
 /**
@@ -36,7 +37,7 @@ object MediaTools {
    * @return The generated transparent [Bitmap].
    */
   fun generateTransparentBitmap(w: Int, h: Int) =
-    Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888).apply { eraseColor(Color.TRANSPARENT) }
+    createBitmap(w, h).apply { eraseColor(Color.TRANSPARENT) }
 
   fun getVideoDurationByAndroidSystem(path: String) = with(MediaMetadataRetriever()) {
     try {
@@ -79,9 +80,13 @@ object MediaTools {
    * Returns null when FFmpeg produced nothing decodable.
    */
   private fun decodeSingleFrameWithFFmpeg(path: String, timestamp_ms: Long): Bitmap? {
-    getVideoSingleFrameWithFFmpeg(path, timestamp_ms, 5, MyConstants.GET_VIDEO_SINGLE_FRAME_WITH_FFMPEG_TEMP_PATH)
-    return BitmapFactory.decodeFile(MyConstants.GET_VIDEO_SINGLE_FRAME_WITH_FFMPEG_TEMP_PATH)
-      ?.copy(Bitmap.Config.ARGB_8888, true)
+    val tempPath = MyConstants.GET_VIDEO_SINGLE_FRAME_WITH_FFMPEG_TEMP_PATH
+    // Delete first: on failure (unsupported codec, audio-only, seek past EOF, ...) FFmpeg leaves the
+    // output untouched, so without this a stale frame from a previously processed video would be
+    // decoded and returned instead of null — silently bypassing callers' null-failure handling.
+    File(tempPath).delete()
+    getVideoSingleFrameWithFFmpeg(path, timestamp_ms, 5, tempPath)
+    return BitmapFactory.decodeFile(tempPath)?.copy(Bitmap.Config.ARGB_8888, true)
   }
 
   fun getVideoSingleFrameWithFFmpeg(
