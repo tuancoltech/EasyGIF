@@ -26,11 +26,9 @@
     <item name="colorOnSurface">@color/dark</item>
     <item name="colorOutline">@color/dark</item>
     <item name="iconTint">@color/dark</item>
-    <item name="android:statusBarColor">#191c19</item>
     <item name="colorSurfaceVariant">@color/grey</item>
     <item name="dialogCornerRadius">8dp</item>
     <item name="android:windowContentTransitions">true</item>
-    <item name="android:navigationBarColor">#00000000</item>
   </style>
 
 
@@ -48,11 +46,9 @@
     <item name="colorOutline">@color/dark</item>
     <item name="iconTint">@color/dark</item>
     <item name="windowNoTitle">true</item>
-    <item name="android:statusBarColor">#191c19</item>
     <item name="dialogCornerRadius">8dp</item>
     <item name="colorSurfaceVariant">@color/grey</item>
     <item name="android:windowContentTransitions">true</item>
-    <item name="android:navigationBarColor">#00000000</item>
   </style>
 
   <style name="Theme.EasyGif.SegmentedButton" parent="Widget.Material3.Button.OutlinedButton">
