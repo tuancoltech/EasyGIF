@@ -12,6 +12,7 @@ import com.nht.gif.toolbox.FileTools.resetDirectory
 import com.nht.gif.toolbox.MediaTools.gifsicleLossy
 import com.nht.gif.toolbox.MediaTools.saveToPng
 import com.nht.gif.toolbox.Toolbox.logRed
+import java.io.File
 
 /**
  * Owns the static-preview rendering pipeline for the export-options dialog.
@@ -44,6 +45,7 @@ class PreviewController(
      * lossy) are each written once and guarded by [fileExistsCache].
      */
     fun render(taskBuilder: TaskBuilderVideoToGifForPreview): Bitmap = with(taskBuilder) {
+        ensureCacheDirectory()
         ensureCached(getCacheShortLength()) {
             val (w, h) = cropParams.calcScaledResolution(shortLength)
             frame.scale(w, h).saveToPng(getCacheShortLength())
@@ -88,6 +90,20 @@ class PreviewController(
 
     /** Clears both in-memory caches and deletes all files in the preview cache directory. */
     fun clear() {
+        bitmapCache.clear()
+        fileExistsCache.clear()
+        resetDirectory(VIDEO_TO_GIF_PREVIEW_CACHE_DIR)
+    }
+
+    /**
+     * Re-creates the cache directory if it has gone missing since construction. The OS can purge
+     * the app cache dir (which backs this preview cache) while the dialog is backgrounded, and
+     * [render] runs again on every STARTED transition via repeatOnLifecycle. FileOutputStream and
+     * FFmpeg do not create parent directories, so a write would otherwise fail with ENOENT. When
+     * the directory is gone the files behind both caches are gone too, so drop them and start clean.
+     */
+    private fun ensureCacheDirectory() {
+        if (File(VIDEO_TO_GIF_PREVIEW_CACHE_DIR).exists()) return
         bitmapCache.clear()
         fileExistsCache.clear()
         resetDirectory(VIDEO_TO_GIF_PREVIEW_CACHE_DIR)

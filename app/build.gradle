@@ -29,6 +29,13 @@ android {
   }
   defaultConfig {
     applicationId "com.nht.gif"
+    // ffmpeg-kit ships an armeabi-v7a slice, but gifsicle and MMKV 2.x do not support
+    // 32-bit. On 32-bit-only devices (e.g. Redmi 9C) that stray slice makes the whole
+    // process run 32-bit, and MMKV throws UnsupportedArchitectureException at launch.
+    // arm64-v8a is the only ABI where ffmpeg + gifsicle + MMKV all work, so ship only it.
+    ndk {
+      abiFilters 'arm64-v8a'
+    }
     minSdk 29
     targetSdk 36
     compileSdk 36

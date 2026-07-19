@@ -380,7 +380,11 @@ class VideoToGifExportOptionsDialogFragment : DialogFragment() {
     binding.mbClose.onClick { dismiss() }
     frame = getVideoSingleFrame(
       vtgActivity.inputVideoPath, vtgActivity.videoView.currentPosition.toLong()
-    )
+    ) ?: run {
+      toast(R.string.unable_to_read_video)
+      dismissAllowingStateLoss()
+      return
+    }
     Canvas(frame).drawBitmap(
       TextRender.render(vtgActivity.textRender, frame.width, frame.height), 0f, 0f, null
     ) // Merge the text layer with the frame
