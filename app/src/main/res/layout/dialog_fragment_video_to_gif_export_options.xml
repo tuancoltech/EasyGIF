@@ -8,13 +8,26 @@
   android:orientation="vertical"
   android:paddingVertical="8dp">
 
-  <androidx.appcompat.widget.AppCompatImageView
-    android:id="@+id/acivSingleFramePreview"
+  <FrameLayout
     android:layout_width="match_parent"
     android:layout_height="288dp"
     android:layout_gravity="center"
     android:layout_marginHorizontal="24dp"
-    android:layout_marginBottom="8dp" />
+    android:layout_marginBottom="8dp">
+
+    <androidx.appcompat.widget.AppCompatImageView
+      android:id="@+id/acivSingleFramePreview"
+      android:layout_width="match_parent"
+      android:layout_height="match_parent" />
+
+    <com.google.android.material.progressindicator.CircularProgressIndicator
+      android:id="@+id/cpiPreview"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:layout_gravity="center"
+      android:indeterminate="true"
+      android:visibility="gone" />
+  </FrameLayout>
 
   <androidx.core.widget.NestedScrollView
     android:layout_width="match_parent"
