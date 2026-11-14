@@ -25,6 +25,7 @@ class GifSplitRepository(private val ioDispatcher: CoroutineDispatcher = Dispatc
    * Extracts all frames from the GIF at [gifPath] into individual PNGs under [OUTPUT_SPLIT_DIR],
    * then decodes and returns them in frame order.
    * Returns null if FFmpeg produces no output (corrupt or unsupported GIF).
+   * Also returns null if no produced PNG could be decoded, so callers never receive an empty list.
    */
   suspend fun extractFrames(gifPath: String): List<Bitmap>? = withContext(ioDispatcher) {
     resetDirectory(OUTPUT_SPLIT_DIR)
@@ -32,7 +33,7 @@ class GifSplitRepository(private val ioDispatcher: CoroutineDispatcher = Dispatc
     val frameCount = File(OUTPUT_SPLIT_DIR).listFiles()?.size ?: return@withContext null
     (1..frameCount).mapNotNull {
       BitmapFactory.decodeFile(OUTPUT_SPLIT_DIR + String.format("%06d", it) + ".png")
-    }
+    }.takeIf { it.isNotEmpty() }
   }
 
   /**

@@ -97,7 +97,7 @@ Extracts all frames from the GIF at `gifPath` into individual PNGs under `OUTPUT
 | Returns | Condition |
 |---|---|
 | `List<Bitmap>` | Extraction succeeded; list is ordered by frame index (1-based). |
-| `null` | `OUTPUT_SPLIT_DIR` is empty after FFmpeg execution (corrupt/unsupported GIF). |
+| `null` | No frame could be produced: `OUTPUT_SPLIT_DIR` is empty after FFmpeg execution (corrupt/unsupported GIF), or every produced PNG failed to decode. Never returns an empty list. |
 
 #### `suspend fun saveFrame(gifPath: String, frameIndex: Int)`
 
