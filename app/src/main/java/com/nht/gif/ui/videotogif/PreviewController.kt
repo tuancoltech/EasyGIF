@@ -54,15 +54,18 @@ class PreviewController(
      *
      * Suspends and runs on [renderContext] so the pipeline never blocks the caller and never
      * mutates the caches concurrently.
+     *
+     * Returns null when a stage output is missing or unreadable (a stage failed, or the OS purged
+     * the cache). Nothing is cached in that case and the next call re-runs every stage.
      */
-    suspend fun render(taskBuilder: TaskBuilderVideoToGifForPreview): Bitmap =
+    suspend fun render(taskBuilder: TaskBuilderVideoToGifForPreview): Bitmap? =
         withContext(renderContext) { renderBlocking(taskBuilder) }
 
     // suspend + ensureActive() between stages: a superseded render aborts at the next stage instead
     // of finishing the whole pipeline, freeing the single renderContext thread for the latest request.
     // ensureActive() (not yield()) never releases the thread, so live renders still run atomically and
     // the cache serialization guaranteed by the single-threaded dispatcher is preserved.
-    private suspend fun renderBlocking(taskBuilder: TaskBuilderVideoToGifForPreview): Bitmap = with(taskBuilder) {
+    private suspend fun renderBlocking(taskBuilder: TaskBuilderVideoToGifForPreview): Bitmap? = with(taskBuilder) {
         ensureCacheDirectory()
         ensureCached(getCacheShortLength()) {
             val (w, h) = cropParams.calcScaledResolution(shortLength)
@@ -98,15 +101,23 @@ class PreviewController(
             )
         }
         currentCoroutineContext().ensureActive()
-        bitmapCache.getOrPut(this.copy(lossy = null)) { BitmapFactory.decodeFile(getCacheFilterPaletteUse()) }
-        if (!bitmapCache.containsKey(this)) {
-            currentCoroutineContext().ensureActive()
-            gifsicleLossy(lossy!!, getCacheFilterPaletteUse(), getCacheFilterPaletteUseLossy(), false)
-            fileExistsCache += getCacheFilterPaletteUseLossy()
-            bitmapCache[this] = BitmapFactory.decodeFile(getCacheFilterPaletteUseLossy())
-        }
-        bitmapCache[this]!!
+        val base = copy(lossy = null)
+        bitmapCache[base] ?: decodeOrInvalidate(getCacheFilterPaletteUse())?.also { bitmapCache[base] = it }
+            ?: return@with null
+        if (lossy == null) return@with bitmapCache[base]
+        bitmapCache[this]?.let { return@with it }
+        currentCoroutineContext().ensureActive()
+        gifsicleLossy(lossy, getCacheFilterPaletteUse(), getCacheFilterPaletteUseLossy(), false)
+        decodeOrInvalidate(getCacheFilterPaletteUseLossy())?.also { bitmapCache[this] = it }
     }
+
+    /**
+     * Decodes [path], or returns null and clears [fileExistsCache] when the file is missing or
+     * unreadable (a stage failed or the OS purged the cache), so the next render re-runs every
+     * stage instead of trusting files that do not exist.
+     */
+    private fun decodeOrInvalidate(path: String): Bitmap? =
+        BitmapFactory.decodeFile(path) ?: run { fileExistsCache.clear(); null }
 
     /** Clears both in-memory caches and deletes all files in the preview cache directory. */
     suspend fun clear() = withContext(renderContext) {
