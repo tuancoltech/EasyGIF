@@ -187,13 +187,14 @@ class VideoToGifActivity : BaseActivity() {
     }
     if (notInitializedBefore) {
       videoWH = with(mediaPlayer) { videoWidth to videoHeight }
-      // Some inputs pass the duration pre-flight check yet expose no decodable video track,
-      // so MediaPlayer reports 0x0 here and Bitmap.createBitmap would throw. Recover by
-      // transcoding — but defer the teardown to the next UI message: releasing the player
+      // Some inputs pass the duration pre-flight check (MediaMetadataRetriever) yet MediaPlayer
+      // reports no decodable video track (0x0, so Bitmap.createBitmap would throw) or no duration
+      // (0 ms, so the trim sliders get valueFrom == valueTo and Material throws on draw). Recover
+      // by transcoding — but defer the teardown to the next UI message: releasing the player
       // now (inside VideoView's onPrepared) would crash VideoView's own getVideoWidth() call
-      // that runs right after this callback. An input still 0x0 after transcoding is genuinely
-      // unreadable (e.g. audio-only), so surface that instead of transcoding forever.
-      if (videoWH.first <= 0 || videoWH.second <= 0) {
+      // that runs right after this callback. An input still unreadable after transcoding is
+      // genuinely unreadable (e.g. audio-only), so surface that instead of transcoding forever.
+      if (videoWH.first <= 0 || videoWH.second <= 0 || videoView.duration <= 0) {
         videoView.post {
           if (isFinishing || isDestroyed) return@post
           videoView.stopPlayback()
