@@ -70,6 +70,14 @@ class GifSplitViewModelTest {
   }
 
   @Test
+  fun `state becomes Error when extractFrames returns an empty list`() = runTest {
+    coEvery { repository.extractFrames(gifPath) } returns emptyList()
+    val viewModel = createViewModel()
+    advanceUntilIdle()
+    assertEquals(GifSplitViewModel.UiState.Error, viewModel.uiState.value)
+  }
+
+  @Test
   fun `saveFrame sets isSaving true then false and emits SaveSuccess`() = runTest {
     coEvery { repository.extractFrames(gifPath) } returns fakeFrames
     coEvery { repository.saveFrame(any(), any()) } returns fakeSavedUri

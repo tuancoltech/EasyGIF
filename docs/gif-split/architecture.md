@@ -48,7 +48,7 @@ sealed class Event {
 State transitions:
 ```
 Loading ──► FramesReady(frames, isSaving=false)  [on successful extraction]
-Loading ──► Error                                [on null frame count]
+Loading ──► Error                                [on null or empty frame list]
 FramesReady(isSaving=false) ──► FramesReady(isSaving=true)   [saveFrame called]
 FramesReady(isSaving=true)  ──► FramesReady(isSaving=false)  [save done] + SaveSuccess event
 Error   ──► [Activity calls finish()]
