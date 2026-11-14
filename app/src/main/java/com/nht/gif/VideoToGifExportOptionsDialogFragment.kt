@@ -444,7 +444,7 @@ class VideoToGifExportOptionsDialogFragment : DialogFragment() {
       binding.cpiPreview.show()
       val bitmap = controller.render(taskBuilder)
       binding.cpiPreview.hide()
-      onReady(bitmap)
+      bitmap?.let(onReady)
     }
   }
 
