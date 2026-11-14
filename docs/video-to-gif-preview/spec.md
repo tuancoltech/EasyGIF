@@ -16,6 +16,7 @@ would produce. `PreviewController` renders that preview off the main thread.
 | F4 | If the preview cannot be produced (a stage failed, or its output is missing/unreadable), the render reports failure instead of throwing, and the dialog keeps showing the previous preview. |
 | F5 | After a failure, the next render re-runs every stage rather than trusting cached stage outputs. |
 | F6 | The preview cache directory is wiped on construction and on `clear()`. |
+| F7 | The crop rect (in `MediaPlayer` video coordinates) is remapped onto the preview frame before cropping, so a frame whose size differs from the reported video size never makes cropping throw. Identity when the sizes match. |
 
 ## Non-Functional Requirements
 

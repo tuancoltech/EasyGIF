@@ -394,7 +394,8 @@ class VideoToGifExportOptionsDialogFragment : DialogFragment() {
       Canvas(frame).drawBitmap(
         TextRender.render(vtgActivity.textRender, frame.width, frame.height), 0f, 0f, null
       ) // Merge the text layer with the frame
-      frame = vtgActivity.cropParams.crop(frame) // Crop
+      val (videoW, videoH) = vtgActivity.videoWH
+      frame = vtgActivity.cropParams.scaledTo(frame.width, frame.height, videoW, videoH).crop(frame) // Crop
       previewController = PreviewController(frame, vtgActivity.cropParams)
       binding.viewColorKeyIndicator.backgroundColor = vtgActivity.savedColorKeyColor ?: frame[0, 0]
       updatePreviewImage()
