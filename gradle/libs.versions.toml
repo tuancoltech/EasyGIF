@@ -1,5 +1,5 @@
 [versions]
-agp                  = "8.9.1"
+agp                  = "8.13.2"
 agp-library          = "8.3.1"
 kotlin               = "2.3.20"
 kotlin-gradle-plugin = "1.9.22"
