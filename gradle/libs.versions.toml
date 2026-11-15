@@ -1,8 +1,6 @@
 [versions]
-agp                  = "8.13.2"
-agp-library          = "8.3.1"
+agp                  = "9.0.1"
 kotlin               = "2.3.20"
-kotlin-gradle-plugin = "1.9.22"
 core-ktx             = "1.18.0"
 appcompat            = "1.7.1"
 draganddrop          = "1.0.0"
@@ -21,7 +19,6 @@ espresso             = "3.7.0"
 compose-bom          = "2025.05.01"
 
 [libraries]
-kotlin-gradle-plugin  = { group = "org.jetbrains.kotlin",       name = "kotlin-gradle-plugin",  version.ref = "kotlin-gradle-plugin" }
 androidx-core-ktx     = { group = "androidx.core",              name = "core-ktx",              version.ref = "core-ktx" }
 androidx-appcompat    = { group = "androidx.appcompat",         name = "appcompat",             version.ref = "appcompat" }
 androidx-draganddrop  = { group = "androidx.draganddrop",       name = "draganddrop",           version.ref = "draganddrop" }
@@ -49,6 +46,4 @@ activity-compose           = { group = "androidx.activity",           name = "ac
 
 [plugins]
 android-application = { id = "com.android.application",               version.ref = "agp" }
-android-library     = { id = "com.android.library",                   version.ref = "agp-library" }
-kotlin-android      = { id = "org.jetbrains.kotlin.android",          version.ref = "kotlin" }
 compose-compiler    = { id = "org.jetbrains.kotlin.plugin.compose",   version.ref = "kotlin" }
