@@ -11,7 +11,14 @@ flag. App behavior is unchanged; the release APK may contain fewer unreferenced 
 - [x] Step 1: unit tests pass
 - [x] Step 1: release APK rebuilt and compared with the baseline (see Results)
 - [x] Step 1: on-device smoke test of the release build (Galaxy A54, Android 16; see On-device results)
-- [ ] Step 2: AGP 9.0.x migration (separate approval)
+- [x] Step 1 committed and pushed (`build/r8-optimized-resource-shrinking`)
+- [x] Step 2: AGP 9.0.1 + Gradle 9.1.0 (branch `build/agp-9-0-1`)
+- [x] Step 2: built-in Kotlin, new DSL, root build file cleanup
+- [x] Step 2: build is free of AGP deprecation warnings (`--warning-mode all`: none)
+- [x] Step 2: unit tests pass (79/79)
+- [x] Step 2: release APK compared with step 1 (size, `resources.arsc`, `res/` entries)
+- [x] Step 2: R8 `usage.txt` checked; no unexpected removals
+- [x] Step 2: on-device smoke test of the release build (Galaxy A54, Android 16)
 
 ## Results (step 1)
 
@@ -46,3 +53,34 @@ filtered by process ID and showed no fatal exception and no resource, class or m
 Not covered: Motion Photo to GIF (no motion-photo sample), the playback-speed sheet, and Android versions
 other than 16. Observed on both the baseline and this build, so not caused by this change: with "Remove
 background" expanded, the dialog's Close/Export buttons are clipped at the bottom edge (still tappable).
+
+## Results (step 2: AGP 9.0.1, Gradle 9.1.0)
+
+| Metric | Step 1 (AGP 8.13.2) | Step 2 (AGP 9.0.1) |
+|---|---|---|
+| Release APK | 25,088,806 B | 25,044,604 B (−44,202 B) |
+| `classes.dex` | 3,254,356 B | 3,214,700 B |
+| `resources.arsc` | 880,604 B | 880,604 B (identical) |
+| `res/` entries | 697 | 697 (identical) |
+| Output file name | `EasyGIF_2026.7.1_202607001-release.apk` | unchanged |
+| Deprecation warnings (`--warning-mode all`) | n/a | none |
+
+R8 usage diff (class-level): 186 classes removed only in step 2, 208 removed only in step 1 (16,654 vs 16,632 total);
+the app classes newly removed are interfaces merged into their single implementation (`FileSizeEstimator`, `FilterThumbGenerator`, `SmartTrimDetector`) and
+FFmpegKit's `Session` interface. JNI-facing `FFmpegKitConfig`/`AbiDetect` stay kept by the AAR's `proguard.txt`.
+
+## On-device results (step 2, release build, Galaxy A54, Android 16)
+
+| Flow | Result |
+|---|---|
+| Launch / home screen | Renders; version 2026.7.1 |
+| Video to GIF editor | Plays, pause, timeline, Ratio sheet → Square crop overlay, Text overlay |
+| Export dialog + preview | Square-cropped preview with text; estimate updates on resolution/clarity change |
+| GIF export (144P, Low) | Valid GIF 144×144, 60 frames, 6.0 s; 171,813 B vs ~176 KB estimate |
+| WebP export | Valid animated WebP 144×144, 60 frames |
+| WebP + Remove background (color key) | Preview shows keyed band; exported frame has 3,426/20,736 transparent px (plain export: 0) |
+| GIF Split | 16 frames extracted; saved frame 5 is SSIM 1.000 vs source, 240×160 |
+| GIF to Video | Valid H.264 240×160, 16 frames, 2.0 s |
+| Logcat | 0 crash-buffer entries for `com.nht.gif`; no ClassNotFound/NoSuchMethod/Resources$NotFound |
+
+Not covered: Motion Photo to GIF (no sample file), playback-speed sheet, Android versions other than 16.

@@ -1,6 +1,5 @@
 plugins {
   alias(libs.plugins.android.application)
-  alias(libs.plugins.kotlin.android)
   alias(libs.plugins.compose.compiler)
 }
 
@@ -22,9 +21,9 @@ android {
       keyPassword localProps['signing.key.password']
     }
   }
-  packagingOptions {
+  packaging {
     jniLibs {
-      useLegacyPackaging true
+      useLegacyPackaging = true
     }
   }
   defaultConfig {
@@ -42,7 +41,7 @@ android {
     versionCode 202607001
     versionName '2026.7.1'
     testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
-    setProperty "archivesBaseName", "EasyGIF_${versionName}_${versionCode}"
+    base.archivesName = "EasyGIF_${versionName}_${versionCode}"
   }
 
   buildTypes {
@@ -69,9 +68,6 @@ android {
   compileOptions {
     sourceCompatibility JavaVersion.VERSION_17
     targetCompatibility JavaVersion.VERSION_17
-  }
-  kotlinOptions {
-    jvmTarget = JavaVersion.VERSION_17.toString()
   }
   namespace 'com.nht.gif'
 }
